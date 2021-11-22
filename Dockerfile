@@ -13,6 +13,10 @@ COPY main.go main.go
 COPY main_test.go main_test.go
 COPY controllers/ controllers/
 
+# Copy test resources
+COPY github_test.txt github_test.txt
+COPY quay_test.txt quay_test.txt
+
 # build service
 RUN export ARCH="$(uname -m)" && if [[ ${ARCH} == "x86_64" ]]; then export ARCH="amd64"; elif [[ ${ARCH} == "aarch64" ]]; then export ARCH="arm64"; fi && \
     go test -v ./... && \

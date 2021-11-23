@@ -22,8 +22,10 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: 1.17
       - name: Run tests
-        run: make test
+        run: |
+         echo "" > coverage.txt
+         export MOCK_API=true && go test  ./... -coverprofile coverage.txt
       - name: Codecov
         uses: codecov/codecov-action@v2.1.0

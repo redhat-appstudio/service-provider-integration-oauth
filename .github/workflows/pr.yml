@@ -61,8 +61,8 @@ jobs:
           go get -u github.com/google/addlicense
           go get -u golang.org/x/tools/cmd/goimports
           git reset HEAD --hard
-          make check_fmt
-          if [[ $? != 0 ]]
+          go fmt -x ./...
+          if [[ ! -z $(git status -s) ]]
           then
             echo "not well formatted sources are found:"
             git --no-pager diff

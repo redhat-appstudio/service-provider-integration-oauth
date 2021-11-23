@@ -37,6 +37,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("QUAY_CRED_PATH", "quay_test.txt")
 	os.Setenv("PORT", "33800")
 	go start()
+	time.Sleep(1)
 	os.Exit(m.Run())
 }
 

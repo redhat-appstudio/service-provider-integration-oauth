@@ -19,10 +19,10 @@ package main
 import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
-	"os"
 )
 
 var client = &http.Client{

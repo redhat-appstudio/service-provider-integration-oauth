@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("GITHUB_CRED_PATH", "github_test.txt")
 	os.Setenv("QUAY_CRED_PATH", "quay_test.txt")
 	go start()
-	m.Run()
+	os.Exit(m.Run())
 }
 
 func TestBadRequestUrl(t *testing.T) {

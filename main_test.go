@@ -35,13 +35,14 @@ var client = &http.Client{
 func TestMain(m *testing.M) {
 	os.Setenv("GITHUB_CRED_PATH", "github_test.txt")
 	os.Setenv("QUAY_CRED_PATH", "quay_test.txt")
+	os.Setenv("PORT", "33800")
 	go start()
 	os.Exit(m.Run())
 }
 
 func TestBadRequestUrl(t *testing.T) {
 
-	r, _ := http.NewRequest("GET", "http://localhost:8000/abcd", nil)
+	r, _ := http.NewRequest("GET", "http://localhost:33800/abcd", nil)
 
 	resp, err := client.Do(r)
 	if err != nil {
@@ -52,7 +53,7 @@ func TestBadRequestUrl(t *testing.T) {
 
 func TestGitHubRedirect(t *testing.T) {
 
-	r, _ := http.NewRequest("GET", "http://localhost:8000/github/authenticate", nil)
+	r, _ := http.NewRequest("GET", "http://localhost:33800/github/authenticate", nil)
 
 	resp, err := client.Do(r)
 	if err != nil {
@@ -64,7 +65,7 @@ func TestGitHubRedirect(t *testing.T) {
 
 func TestQuayRedirect(t *testing.T) {
 
-	r, _ := http.NewRequest("GET", "http://localhost:8000/quay/authenticate", nil)
+	r, _ := http.NewRequest("GET", "http://localhost:33800/quay/authenticate", nil)
 
 	resp, err := client.Do(r)
 	if err != nil {

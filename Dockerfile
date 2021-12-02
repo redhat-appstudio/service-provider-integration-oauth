@@ -25,9 +25,11 @@ RUN export ARCH="$(uname -m)" && if [[ ${ARCH} == "x86_64" ]]; then export ARCH=
 FROM registry.access.redhat.com/ubi8-minimal:8.4-212
 
 COPY --from=builder /spi-oauth/spi-oauth /spi-oauth
+COPY github.txt /github.txt
+COPY quay.txt /quay.txt
 
 WORKDIR /
 USER 65532:65532
 
-ENTRYPOINT ["/spi-service"]
+ENTRYPOINT ["/spi-oauth"]
 

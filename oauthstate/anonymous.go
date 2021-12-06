@@ -15,6 +15,7 @@ package oauthstate
 
 import (
 	"fmt"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
 	"time"
 
 	"github.com/go-jose/go-jose/v3/jwt"
@@ -28,6 +29,8 @@ type AnonymousOAuthState struct {
 	TokenNamespace string   `json:"tokenNamespace"`
 	IssuedAt       int64    `json:"issuedAt,omitempty"`
 	Scopes         []string `json:"scopes"`
+	ServiceProviderType config.ServiceProviderType `json:"serviceProviderType"`
+	ServiceProviderUrl string `json:"serviceProviderUrl"`
 }
 
 func (s *Codec) EncodeAnonymous(state *AnonymousOAuthState) (string, error) {

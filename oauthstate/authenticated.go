@@ -22,14 +22,11 @@ type AuthenticatedOAuthState struct {
 	KubernetesIdentityToken string `json:"k8sIdentity"`
 }
 
-func (s *Codec) AuthenticatedStateFor(anonymous *AnonymousOAuthState, identityToken string) (string, error) {
-	return jwt.Signed(s.signer).Claims(&AuthenticatedOAuthState{
-		AnonymousOAuthState:     *anonymous,
-		KubernetesIdentityToken: identityToken,
-	}).CompactSerialize()
+func (s *Codec) EncodeAuthenticated(state *AuthenticatedOAuthState) (string, error) {
+	return jwt.Signed(s.signer).Claims(state).CompactSerialize()
 }
 
-func (s *Codec) ParseAuthenticatedState(state string) (AuthenticatedOAuthState, error) {
+func (s *Codec) ParseAuthenticated(state string) (AuthenticatedOAuthState, error) {
 	token, err := jwt.ParseSigned(state)
 	if err != nil {
 		return AuthenticatedOAuthState{}, err

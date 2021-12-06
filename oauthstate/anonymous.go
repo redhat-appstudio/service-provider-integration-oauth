@@ -30,15 +30,11 @@ type AnonymousOAuthState struct {
 	Scopes         []string `json:"scopes"`
 }
 
-func (s *Codec) AnonymousStateFor(spiAccessTokenName string, spiAccessTokenNamespace string) (string, error) {
-	return jwt.Signed(s.signer).Claims(&AnonymousOAuthState{
-		TokenName:      spiAccessTokenName,
-		TokenNamespace: spiAccessTokenNamespace,
-		IssuedAt:       time.Now().Unix(),
-	}).CompactSerialize()
+func (s *Codec) EncodeAnonymous(state *AnonymousOAuthState) (string, error) {
+	return jwt.Signed(s.signer).Claims(state).CompactSerialize()
 }
 
-func (s *Codec) ParseAnonymousState(state string) (AnonymousOAuthState, error) {
+func (s *Codec) ParseAnonymous(state string) (AnonymousOAuthState, error) {
 	token, err := jwt.ParseSigned(state)
 	if err != nil {
 		return AnonymousOAuthState{}, err

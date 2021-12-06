@@ -19,81 +19,43 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"strings"
+	"spi-oauth/config"
+	"spi-oauth/log"
 )
 
-var quayConf *oauth2.Config
+type QuayController struct {
+	Config config.ServiceProviderConfiguration
+}
+
+var _ Controller = (*QuayController)(nil)
+
+const quayUserAPI = "https://quay.io/api/v1/user"
 
 var quayEndpoint = oauth2.Endpoint{
 	AuthURL:  "https://quay.io/oauth/authorize",
 	TokenURL: "https://quay.io/oauth/token",
 }
 
-func initQuayConfig(w http.ResponseWriter) bool {
-	filename := "quay.txt"
-	if value, ok := os.LookupEnv("QUAY_CRED_PATH"); ok {
-		filename = value
-	}
-	credential, err := readCredsFile(filename)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to read Quay credential file: %s", err.Error()), http.StatusInternalServerError)
-		return false
-	}
-	quayConf = &oauth2.Config{
-		ClientID:     credential.clientId,
-		ClientSecret: credential.clientSecret,
-		RedirectURL:  credential.redirectURL,
-		Endpoint:     quayEndpoint,
-	}
-	return true
+func (q QuayController) Authenticate(w http.ResponseWriter, r *http.Request) {
+	commonAuthenticate(w, r, &q.Config, quayEndpoint)
 }
 
-const quayUserAPI = "https://quay.io/api/v1/user"
-
-var QuayAuthenticate = func(w http.ResponseWriter, r *http.Request) {
-
-	if quayConf == nil && !initQuayConfig(w) {
-		return
-	}
-
-	scopes := r.FormValue("scopes")
-	quayConf.Scopes = strings.Split(scopes, ",")
-
-	state := r.FormValue("state")
-
-	//	typeOption := oauth2.SetAuthURLParam("response_type", "code")
-	//	realmOption := oauth2.SetAuthURLParam("realm", "realm")
-	url := quayConf.AuthCodeURL(state)
-
-	http.Redirect(w, r, url, http.StatusFound)
-}
-
-var QuayCallback = func(w http.ResponseWriter, r *http.Request) {
-
-	if quayConf == nil && !initQuayConfig(w) {
-		return
-	}
-
-	//state := r.FormValue("state");
-	//TODO: validate state
-
-	code := r.FormValue("code")
-
-	token, err := quayConf.Exchange(context.Background(), code)
+func (q QuayController) Callback(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	token, err := finishOAuthExchange(ctx, r, &q.Config, quayEndpoint)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error in Quay token exchange: %s", err.Error())
+		logAndWriteResponse(w, "error in Quay token exchange", err)
 		return
 	}
 
 	req, err := http.NewRequest("GET", quayUserAPI, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Failed making Quay request: %s", err.Error())
+		logAndWriteResponse(w, "failed making Quay request", err)
 		return
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -101,19 +63,24 @@ var QuayCallback = func(w http.ResponseWriter, r *http.Request) {
 	response, err := client.Do(req)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Failed getting Quay user: %s", err.Error())
+		logAndWriteResponse(w, "failed getting Quay user", err)
 		return
 	}
-	defer response.Body.Close()
+
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			log.Error("failed to close the response body", zap.Error(err))
+		}
+	}()
+
 	content, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Failed pasring Quay user data: %s", err.Error())
+		logAndWriteResponse(w, "failed parsing Quay user data", err)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Oauth Token: %s", token.AccessToken)
 	fmt.Fprintf(w, "User data: %s", string(content))
-
 }

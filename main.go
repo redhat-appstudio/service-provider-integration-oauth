@@ -17,36 +17,56 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
+	"spi-oauth/config"
 	"spi-oauth/controllers"
+	"spi-oauth/log"
 )
 
-func main() {
-	start()
+type cliArgs struct {
+	ConfigFile string `arg:"env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
+	Port int `arg:"env" default:"8000" help:"The port to listen on"`
+	DevMode bool `arg:"env" default:"false" help:"use dev-mode logging"`
 }
 
-func start() {
+func main() {
+	args := cliArgs{}
+	arg.MustParse(&args)
 
-	router := mux.NewRouter()
+	// must be done prior to any usage of log
+	log.DevMode = args.DevMode
 
-	router.HandleFunc("/github/authenticate", controllers.GitHubAuthenticate).Methods("GET")
-	router.HandleFunc("/github/callback", controllers.GitHubCallback).Methods("GET")
-
-	router.HandleFunc("/quay/authenticate", controllers.QuayAuthenticate).Methods("GET")
-	router.HandleFunc("/quay/callback", controllers.QuayCallback).Methods("GET")
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000"
+	cfg, err := config.LoadFrom(args.ConfigFile)
+	if err != nil {
+		log.Error("failed to load configuration", zap.Error(err))
+		os.Exit(1)
 	}
 
-	fmt.Println(port)
+	start(cfg, args.Port)
+}
 
-	err := http.ListenAndServe(":"+port, router)
+func start(cfg config.Configuration, port int) {
+	router := mux.NewRouter()
+
+	for _, sp := range cfg.ServiceProviders {
+		controller, err := controllers.FromConfiguration(sp)
+		if err != nil {
+			log.Error("failed to initialize controller: %s", zap.Error(err))
+		}
+		router.Handle(fmt.Sprintf("/%s/authenticate", sp), http.HandlerFunc(controller.Authenticate)).Methods("GET")
+		router.Handle(fmt.Sprintf("/%s/callback", sp), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			controller.Callback(context.Background(), w, r)
+		})).Methods("GET")
+	}
+
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 	if err != nil {
-		fmt.Print(err)
+		log.Error("failed to start the HTTP server", zap.Error(err))
 	}
 }

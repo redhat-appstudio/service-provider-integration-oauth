@@ -1,3 +1,0 @@
-app123
-secret123
-http://localhost:8000/github/callback

@@ -1,3 +1,0 @@
-<place github client-id here>
-<place github client-secret here>
-http://<place this spi service address here>/github/callback

@@ -1,3 +1,0 @@
-<place quay client-id here>
-<place quay client-secret here>
-http://<place this spi service address here>/quay/callback

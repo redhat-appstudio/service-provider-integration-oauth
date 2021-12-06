@@ -20,9 +20,9 @@ import (
 func TestGitHubAuthenticateRedirect(t *testing.T) {
 	g := GitHubController{
 		Config: config.ServiceProviderConfiguration{
-			ClientId:               "clientId",
-			ClientSecret:           "clientSecret",
-			RedirectUrl:            "http://redirect.url",
+			ClientId:     "clientId",
+			ClientSecret: "clientSecret",
+			RedirectUrl:  "http://redirect.url",
 		},
 	}
 
@@ -48,9 +48,9 @@ func TestGitHubAuthenticateRedirect(t *testing.T) {
 func TestGitHubCallbackReachesOutForToken(t *testing.T) {
 	g := GitHubController{
 		Config: config.ServiceProviderConfiguration{
-			ClientId:               "clientId",
-			ClientSecret:           "clientSecret",
-			RedirectUrl:            "http://redirect.url",
+			ClientId:     "clientId",
+			ClientSecret: "clientSecret",
+			RedirectUrl:  "http://redirect.url",
 		},
 	}
 
@@ -71,10 +71,10 @@ func TestGitHubCallbackReachesOutForToken(t *testing.T) {
 			if strings.HasPrefix(r.URL.String(), "https://github.com") {
 				githubReached = true
 				return &http.Response{
-					StatusCode:       200,
-					Header:           http.Header{},
-					Body:             ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
-					Request:          r,
+					StatusCode: 200,
+					Header:     http.Header{},
+					Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
+					Request:    r,
 				}, nil
 			}
 

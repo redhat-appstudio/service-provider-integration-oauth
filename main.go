@@ -31,8 +31,8 @@ import (
 
 type cliArgs struct {
 	ConfigFile string `arg:"env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
-	Port int `arg:"env" default:"8000" help:"The port to listen on"`
-	DevMode bool `arg:"env" default:"false" help:"use dev-mode logging"`
+	Port       int    `arg:"env" default:"8000" help:"The port to listen on"`
+	DevMode    bool   `arg:"env" default:"false" help:"use dev-mode logging"`
 }
 
 func main() {

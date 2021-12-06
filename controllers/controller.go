@@ -54,8 +54,7 @@ func finishOAuthExchange(ctx context.Context, r *http.Request, cfg *config.Servi
 	return oauthCfg.Exchange(ctx, code)
 }
 
-
 func logAndWriteResponse(w http.ResponseWriter, msg string, err error) {
-	_, _ = fmt.Fprintf(w, msg + ": ", err.Error())
+	_, _ = fmt.Fprintf(w, msg+": ", err.Error())
 	log.Error(msg, zap.Error(err))
 }

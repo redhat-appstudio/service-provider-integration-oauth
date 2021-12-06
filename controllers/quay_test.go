@@ -20,9 +20,9 @@ import (
 func TestQuayAuthenticateRedirect(t *testing.T) {
 	q := QuayController{
 		Config: config.ServiceProviderConfiguration{
-			ClientId:               "clientId",
-			ClientSecret:           "clientSecret",
-			RedirectUrl:            "http://redirect.url",
+			ClientId:     "clientId",
+			ClientSecret: "clientSecret",
+			RedirectUrl:  "http://redirect.url",
 		},
 	}
 
@@ -48,9 +48,9 @@ func TestQuayAuthenticateRedirect(t *testing.T) {
 func TestQuayCallbackReachesOutForToken(t *testing.T) {
 	q := QuayController{
 		Config: config.ServiceProviderConfiguration{
-			ClientId:               "clientId",
-			ClientSecret:           "clientSecret",
-			RedirectUrl:            "http://redirect.url",
+			ClientId:     "clientId",
+			ClientSecret: "clientSecret",
+			RedirectUrl:  "http://redirect.url",
 		},
 	}
 
@@ -71,10 +71,10 @@ func TestQuayCallbackReachesOutForToken(t *testing.T) {
 			if strings.HasPrefix(r.URL.String(), "https://quay.io") {
 				quayReached = true
 				return &http.Response{
-					StatusCode:       200,
-					Header:           http.Header{},
-					Body:             ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
-					Request:          r,
+					StatusCode: 200,
+					Header:     http.Header{},
+					Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
+					Request:    r,
 				}, nil
 			}
 

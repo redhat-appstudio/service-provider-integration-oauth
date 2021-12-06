@@ -24,7 +24,7 @@ func ensureLogger() *zap.Logger {
 		lgr, err = zap.NewProduction(zap.AddCallerSkip(1))
 	}
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr,"failed to setup the logger: %s", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "failed to setup the logger: %s", err.Error())
 		os.Exit(1)
 	}
 

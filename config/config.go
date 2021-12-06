@@ -8,24 +8,25 @@ import (
 )
 
 type ServiceProviderType string
+
 const (
 	ServiceProviderTypeGitHub ServiceProviderType = "GitHub"
-	ServiceProviderTypeQuay ServiceProviderType = "Quay"
+	ServiceProviderTypeQuay   ServiceProviderType = "Quay"
 )
 
 type ServiceProviderConfiguration struct {
-	ClientId string `yaml:"clientId"`
-	ClientSecret string `yaml:"clientSecret"`
-	RedirectUrl string `yaml:"redirectUrl"`
-	ServiceProviderType ServiceProviderType `yaml:"type"`
-	ServiceProviderBaseUrl string `yaml:"baseUrl,omitempty"`
+	ClientId               string              `yaml:"clientId"`
+	ClientSecret           string              `yaml:"clientSecret"`
+	RedirectUrl            string              `yaml:"redirectUrl"`
+	ServiceProviderType    ServiceProviderType `yaml:"type"`
+	ServiceProviderBaseUrl string              `yaml:"baseUrl,omitempty"`
 }
 
 // Configuration contains the specification of the known service providers as well as other configuration data shared
 // between the SPI OAuth service and the SPI operator
 type Configuration struct {
 	ServiceProviders []ServiceProviderConfiguration `yaml:"serviceProviders"`
-	SharedSecretFile string `yaml:"sharedSecretFile"`
+	SharedSecretFile string                         `yaml:"sharedSecretFile"`
 }
 
 func LoadFrom(path string) (Configuration, error) {

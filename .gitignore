@@ -12,3 +12,4 @@ _test
 *.prof
 *.out
 .idea/
+bin/

@@ -30,7 +30,7 @@ type GitHubController struct {
 
 var _ Controller = (*GitHubController)(nil)
 
-const gitHubUserAPI = "https://api.github.com/user?access_token="
+const gitHubUserAPI = "https://api.github.com/user"
 
 func (g GitHubController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	commonAuthenticate(w, r, &g.Config, github.Endpoint)

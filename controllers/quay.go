@@ -16,10 +16,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/log"
 	"io/ioutil"
 	"net/http"
-	"spi-oauth/config"
-	"spi-oauth/log"
 
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"

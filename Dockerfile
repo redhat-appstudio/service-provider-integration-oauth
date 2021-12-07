@@ -12,7 +12,6 @@ COPY go.sum go.sum
 COPY main.go main.go
 COPY controllers/ controllers/
 COPY config/ config/
-COPY log/ log/
 
 # build service
 RUN export ARCH="$(uname -m)" && if [[ ${ARCH} == "x86_64" ]]; then export ARCH="amd64"; elif [[ ${ARCH} == "aarch64" ]]; then export ARCH="arm64"; fi && \

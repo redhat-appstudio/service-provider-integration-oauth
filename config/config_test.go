@@ -14,6 +14,10 @@
 package config
 
 import (
+	"io/fs"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -21,8 +25,17 @@ import (
 )
 
 func TestRead(t *testing.T) {
+	secretFile, err := os.CreateTemp(os.TempDir(), "testSecret")
+	assert.NoError(t, err)
+	defer os.Remove(secretFile.Name())
+
+	assert.NoError(t, ioutil.WriteFile(secretFile.Name(), []byte("secret"), fs.ModeExclusive))
+
+	absPath, err := filepath.Abs(secretFile.Name())
+	assert.NoError(t, err)
+
 	yaml := `
-sharedSecretFile: /tmp/over-there
+sharedSecretFile: ` + absPath + `
 serviceProviders:
 - type: GitHub
   clientId: "123"
@@ -34,7 +47,8 @@ serviceProviders:
   redirectUrl: https://localhost:8080/quay/callback
 `
 
-	_, err := ReadFrom(strings.NewReader(yaml))
-
+	cfg, err := ReadFrom(strings.NewReader(yaml))
 	assert.NoError(t, err)
+
+	assert.Equal(t, []byte("secret"), cfg.SharedSecret)
 }

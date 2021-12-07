@@ -39,8 +39,13 @@ type ServiceProviderConfiguration struct {
 // Configuration contains the specification of the known service providers as well as other configuration data shared
 // between the SPI OAuth service and the SPI operator
 type Configuration struct {
+	ServiceProviders []ServiceProviderConfiguration
+	SharedSecret []byte
+}
+
+type persistedConfiguration struct {
 	ServiceProviders []ServiceProviderConfiguration `yaml:"serviceProviders"`
-	SharedSecretFile string                         `yaml:"sharedSecretFile"`
+	SharedSecretFile string `yaml:"sharedSecretFile"`
 }
 
 func LoadFrom(path string) (Configuration, error) {
@@ -54,6 +59,8 @@ func LoadFrom(path string) (Configuration, error) {
 }
 
 func ReadFrom(rdr io.Reader) (Configuration, error) {
+	cfg := persistedConfiguration{}
+
 	ret := Configuration{}
 
 	bytes, err := ioutil.ReadAll(rdr)
@@ -61,9 +68,13 @@ func ReadFrom(rdr io.Reader) (Configuration, error) {
 		return ret, err
 	}
 
-	if err := yaml.Unmarshal(bytes, &ret); err != nil {
+	if err := yaml.Unmarshal(bytes, &cfg); err != nil {
 		return ret, err
 	}
 
-	return ret, nil
+	ret.ServiceProviders = cfg.ServiceProviders
+
+	ret.SharedSecret, err = ioutil.ReadFile(cfg.SharedSecretFile)
+
+	return ret, err
 }

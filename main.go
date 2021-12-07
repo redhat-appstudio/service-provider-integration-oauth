@@ -20,7 +20,6 @@ import (
 	"os"
 	"spi-oauth/config"
 	"spi-oauth/controllers"
-	"spi-oauth/log"
 
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
@@ -37,12 +36,19 @@ func main() {
 	args := cliArgs{}
 	arg.MustParse(&args)
 
-	// must be done prior to any usage of log
-	log.DevMode = args.DevMode
+	var logger *zap.Logger
+	if args.DevMode {
+		logger, _ = zap.NewDevelopment()
+	} else {
+		logger, _ = zap.NewProduction()
+	}
+	if logger != nil {
+		zap.ReplaceGlobals(logger)
+	}
 
 	cfg, err := config.LoadFrom(args.ConfigFile)
 	if err != nil {
-		log.Error("failed to load configuration", zap.Error(err))
+		zap.L().Error("failed to load configuration", zap.Error(err))
 		os.Exit(1)
 	}
 
@@ -55,7 +61,7 @@ func start(cfg config.Configuration, port int) {
 	for _, sp := range cfg.ServiceProviders {
 		controller, err := controllers.FromConfiguration(sp)
 		if err != nil {
-			log.Error("failed to initialize controller: %s", zap.Error(err))
+			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}
 		router.Handle(fmt.Sprintf("/%s/authenticate", sp), http.HandlerFunc(controller.Authenticate)).Methods("GET")
 		router.Handle(fmt.Sprintf("/%s/callback", sp), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +71,6 @@ func start(cfg config.Configuration, port int) {
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 	if err != nil {
-		log.Error("failed to start the HTTP server", zap.Error(err))
+		zap.L().Error("failed to start the HTTP server", zap.Error(err))
 	}
 }

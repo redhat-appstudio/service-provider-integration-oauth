@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/log"
 	"io/ioutil"
 	"net/http"
 
@@ -67,7 +66,7 @@ func (q QuayController) Callback(ctx context.Context, w http.ResponseWriter, r *
 
 	defer func() {
 		if err := response.Body.Close(); err != nil {
-			log.Error("failed to close the response body", zap.Error(err))
+			zap.L().Error("failed to close the response body", zap.Error(err))
 		}
 	}()
 

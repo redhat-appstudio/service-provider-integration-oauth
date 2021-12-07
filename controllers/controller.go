@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/log"
 	"net/http"
 	"strings"
 
@@ -70,5 +69,5 @@ func finishOAuthExchange(ctx context.Context, r *http.Request, cfg *config.Servi
 
 func logAndWriteResponse(w http.ResponseWriter, msg string, err error) {
 	_, _ = fmt.Fprintf(w, msg+": ", err.Error())
-	log.Error(msg, zap.Error(err))
+	zap.L().Error(msg, zap.Error(err))
 }

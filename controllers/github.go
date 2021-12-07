@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/log"
 	"io/ioutil"
 	"net/http"
 
@@ -31,7 +30,7 @@ type GitHubController struct {
 
 var _ Controller = (*GitHubController)(nil)
 
-const gitHubUserAPI = "https://api.github.com/user?access_token="
+const gitHubUserAPI = "https://api.github.com/user"
 
 func (g GitHubController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	commonAuthenticate(w, r, &g.Config, github.Endpoint)
@@ -62,7 +61,7 @@ func (g GitHubController) Callback(ctx context.Context, w http.ResponseWriter, r
 
 	defer func() {
 		if err := response.Body.Close(); err != nil {
-			log.Error("failed to close the response body", zap.Error(err))
+			zap.L().Error("failed to close the response body", zap.Error(err))
 		}
 	}()
 

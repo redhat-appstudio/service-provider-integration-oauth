@@ -17,7 +17,10 @@ package controllers
 
 import "net/http"
 
+// fakeRoundTrip casts a function into a http.RoundTripper
 type fakeRoundTrip func(r *http.Request) (*http.Response, error)
+
+var _ http.RoundTripper = fakeRoundTrip(nil)
 
 func (f fakeRoundTrip) RoundTrip(r *http.Request) (*http.Response, error) {
 	return f(r)

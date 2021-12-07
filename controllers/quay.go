@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"spi-oauth/config"
-	"spi-oauth/log"
 
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -67,7 +66,7 @@ func (q QuayController) Callback(ctx context.Context, w http.ResponseWriter, r *
 
 	defer func() {
 		if err := response.Body.Close(); err != nil {
-			log.Error("failed to close the response body", zap.Error(err))
+			zap.L().Error("failed to close the response body", zap.Error(err))
 		}
 	}()
 

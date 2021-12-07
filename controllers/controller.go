@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"net/http"
 	"spi-oauth/config"
-	"spi-oauth/log"
 	"strings"
 
 	"go.uber.org/zap"
@@ -70,5 +69,5 @@ func finishOAuthExchange(ctx context.Context, r *http.Request, cfg *config.Servi
 
 func logAndWriteResponse(w http.ResponseWriter, msg string, err error) {
 	_, _ = fmt.Fprintf(w, msg+": ", err.Error())
-	log.Error(msg, zap.Error(err))
+	zap.L().Error(msg, zap.Error(err))
 }

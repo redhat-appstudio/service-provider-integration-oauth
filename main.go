@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/alexflint/go-arg"
-	"io"
 	"net/http"
 	"os"
 	"spi-oauth/config"
@@ -33,24 +32,8 @@ type cliArgs struct {
 	DevMode    bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
 }
 
-// HealthCheckHandler is a liveness probe.
-func HealthCheckHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func OkHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	_, err := io.WriteString(w, `{"alive": true}`)
-	if err != nil {
-		zap.L().Error("failed to send health status", zap.Error(err))
-	}
-}
-
-// ReadyCheckHandler is a readiness probe.
-func ReadyCheckHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, err := io.WriteString(w, `{"ready": true}`)
-	if err != nil {
-		zap.L().Error("failed to send ready status", zap.Error(err))
-	}
 }
 func main() {
 	args := cliArgs{}
@@ -87,8 +70,8 @@ func start(cfg config.Configuration, port int) {
 		router.Handle(fmt.Sprintf("/%s/callback", sp), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			controller.Callback(context.Background(), w, r)
 		})).Methods("GET")
-		router.HandleFunc("/health", HealthCheckHandler).Methods("GET")
-		router.HandleFunc("/ready", ReadyCheckHandler).Methods("GET")
+		router.HandleFunc("/health", OkHandler).Methods("GET")
+		router.HandleFunc("/ready", OkHandler).Methods("GET")
 	}
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)

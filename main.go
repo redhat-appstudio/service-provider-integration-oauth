@@ -37,14 +37,20 @@ type cliArgs struct {
 func HealthCheckHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{"alive": true}`)
+	_, err := io.WriteString(w, `{"alive": true}`)
+	if err != nil {
+		zap.L().Error("failed to send health status", zap.Error(err))
+	}
 }
 
 // ReadyCheckHandler is a readiness probe.
 func ReadyCheckHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{"ready": true}`)
+	_, err := io.WriteString(w, `{"ready": true}`)
+	if err != nil {
+		zap.L().Error("failed to send ready status", zap.Error(err))
+	}
 }
 func main() {
 	args := cliArgs{}

@@ -1,3 +1,7 @@
+SPIS_TAG_NAME ?= next
+SPIS_IMAGE_TAG_BASE ?= quay.io/redhat-appstudio/service-provider-integration-oauth
+SPIS_IMG ?= $(SPIS_IMAGE_TAG_BASE):$(SPIS_TAG_NAME)
+
 SHELL := bash
 .SHELLFLAGS = -ec
 .ONESHELL:
@@ -6,9 +10,13 @@ ifndef VERBOSE
   MAKEFLAGS += --silent
 endif
 
-SPIS_TAG_NAME ?= next
-SPIS_IMAGE_TAG_BASE ?= quay.io/redhat-appstudio/service-provider-integration-oauth
-SPIS_IMG ?= $(SPIS_IMAGE_TAG_BASE):$(SPIS_TAG_NAME)
+ENVTEST_K8S_VERSION = 1.21
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
 
 ##@ General
 
@@ -17,8 +25,8 @@ help: ## Display this help.
 
 ##@ Development
 
-test: fmt fmt_license vet ## Run the unit tests
-	go test ./... -cover
+test: fmt fmt_license vet envtest ## Run the unit tests
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -cover
 
 run: ## Run the binary
 	go run main.go
@@ -53,3 +61,21 @@ fmt_license:
   else
 	  $(error addlicense must be installed for this rule: go get -u github.com/google/addlicense)
   endif
+
+ENVTEST = $(shell pwd)/bin/setup-envtest
+envtest: ## Download envtest-setup locally if necessary.
+	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+
+# go-get-tool will 'go get' any package $2 and install it to $1.
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+go mod init tmp ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+rm -rf $$TMP_DIR ;\
+}
+endef

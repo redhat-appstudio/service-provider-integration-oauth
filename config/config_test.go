@@ -25,17 +25,47 @@ import (
 )
 
 func TestRead(t *testing.T) {
+	kubeConfigContent := `
+apiVersion: v1
+clusters:
+- cluster:
+    insecure-skip-tls-verify: true
+    server: 127.0.0.1
+  name: cluster
+contexts:
+- context:
+    cluster: cluster
+    user: user
+  name: ctx
+current-context: ctx
+kind: Config
+preferences: {}
+users:
+- name: user
+  user:
+    token: "123"
+`
+
 	secretFile, err := os.CreateTemp(os.TempDir(), "testSecret")
 	assert.NoError(t, err)
 	defer os.Remove(secretFile.Name())
 
-	assert.NoError(t, ioutil.WriteFile(secretFile.Name(), []byte("secret"), fs.ModeExclusive))
+	kcfgFile, err := os.CreateTemp(os.TempDir(), "testKubeConfig")
+	assert.NoError(t, err)
+	defer os.Remove(kcfgFile.Name())
 
-	absPath, err := filepath.Abs(secretFile.Name())
+	assert.NoError(t, ioutil.WriteFile(secretFile.Name(), []byte("secret"), fs.ModeExclusive))
+	assert.NoError(t, ioutil.WriteFile(kcfgFile.Name(), []byte(kubeConfigContent), fs.ModeExclusive))
+
+	secretFilePath, err := filepath.Abs(secretFile.Name())
 	assert.NoError(t, err)
 
-	yaml := `
-sharedSecretFile: ` + absPath + `
+	kcfgFilePath, err := filepath.Abs(kcfgFile.Name())
+	assert.NoError(t, err)
+
+	configFileContent := `
+sharedSecretFile: ` + secretFilePath + `
+kubeConfigPath: ` + kcfgFilePath + `
 serviceProviders:
 - type: GitHub
   clientId: "123"
@@ -47,7 +77,7 @@ serviceProviders:
   redirectUrl: https://localhost:8080/quay/callback
 `
 
-	cfg, err := ReadFrom(strings.NewReader(yaml))
+	cfg, err := ReadFrom(strings.NewReader(configFileContent))
 	assert.NoError(t, err)
 
 	assert.Equal(t, []byte("secret"), cfg.SharedSecret)

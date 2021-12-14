@@ -18,6 +18,10 @@ import (
 	"io/ioutil"
 	"os"
 
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -39,13 +43,28 @@ type ServiceProviderConfiguration struct {
 // Configuration contains the specification of the known service providers as well as other configuration data shared
 // between the SPI OAuth service and the SPI operator
 type Configuration struct {
+	// ServiceProviders is the list of configuration options for the individual service providers
 	ServiceProviders []ServiceProviderConfiguration
+
+	// SharedSecret is the secret value used for signing the JWT keys. This is configured by specifying the
+	// `sharedSecretFile` in the persisted configuration with the path to the file containing the secret.
 	SharedSecret []byte
+
+	// KubernetesClient is the kubernetes client to be used. This is either the in-cluster client or the client with
+	// configuration obtained from the file on `kubeConfigPath`. If no `kubeConfigPath` is provided in the persisted
+	// configuration, the in-cluster client is assumed.
+	KubernetesClient *kubernetes.Clientset
+
+	//KubernetesAuthAudiences is the list of audiences used when performing the token reviews with the Kubernetes API.
+	// Can be left empty if not needed.
+	KubernetesAuthAudiences []string
 }
 
 type persistedConfiguration struct {
-	ServiceProviders []ServiceProviderConfiguration `yaml:"serviceProviders"`
-	SharedSecretFile string `yaml:"sharedSecretFile"`
+	ServiceProviders        []ServiceProviderConfiguration `yaml:"serviceProviders"`
+	SharedSecretFile        string                         `yaml:"sharedSecretFile"`
+	KubeConfigPath          string                         `yaml:"kubeConfigPath,omitempty"`
+	KubernetesAuthAudiences []string                       `yaml:"kubernetesAuthAudiences,omitempty"`
 }
 
 func LoadFrom(path string) (Configuration, error) {
@@ -72,9 +91,38 @@ func ReadFrom(rdr io.Reader) (Configuration, error) {
 		return ret, err
 	}
 
+	cl, err := kubernetesClient(cfg.KubeConfigPath)
+	if err != nil {
+		return ret, err
+	}
+
 	ret.ServiceProviders = cfg.ServiceProviders
+	ret.KubernetesClient = cl
+	ret.KubernetesAuthAudiences = cfg.KubernetesAuthAudiences
 
 	ret.SharedSecret, err = ioutil.ReadFile(cfg.SharedSecretFile)
 
 	return ret, err
+}
+
+func readKubeConfig(loc string) (*rest.Config, error) {
+	if loc == "" {
+		return rest.InClusterConfig()
+	} else {
+		return clientcmd.BuildConfigFromFlags("", loc)
+	}
+}
+
+func kubernetesClient(loc string) (*kubernetes.Clientset, error) {
+	kcfg, err := readKubeConfig(loc)
+	if err != nil {
+		return nil, err
+	}
+
+	ret, err := kubernetes.NewForConfig(kcfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }

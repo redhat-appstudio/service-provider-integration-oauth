@@ -16,11 +16,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/alexflint/go-arg"
 	"net/http"
 	"os"
-	"spi-oauth/config"
-	"spi-oauth/controllers"
+
+	"github.com/alexflint/go-arg"
+
+	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
 
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
@@ -62,7 +64,7 @@ func start(cfg config.Configuration, port int) {
 	router := mux.NewRouter()
 
 	for _, sp := range cfg.ServiceProviders {
-		controller, err := controllers.FromConfiguration(sp)
+		controller, err := controllers.FromConfiguration(cfg, sp)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}

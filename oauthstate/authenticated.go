@@ -15,11 +15,13 @@ package oauthstate
 
 import (
 	"github.com/go-jose/go-jose/v3/jwt"
+	"k8s.io/apiserver/pkg/authentication/user"
 )
 
 type AuthenticatedOAuthState struct {
 	AnonymousOAuthState
-	KubernetesIdentityToken string `json:"k8sIdentity"`
+	KubernetesIdentity  user.DefaultInfo `json:"kubernetesIdentity"`
+	AuthorizationHeader string           `json:"authorizationHeader"`
 }
 
 func (s *Codec) EncodeAuthenticated(state *AuthenticatedOAuthState) (string, error) {

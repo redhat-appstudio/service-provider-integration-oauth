@@ -16,16 +16,18 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
-	"io/ioutil"
 	"net/http"
 
-	"go.uber.org/zap"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+
 	"golang.org/x/oauth2/github"
 )
 
 type GitHubController struct {
-	Config config.ServiceProviderConfiguration
+	Config           config.ServiceProviderConfiguration
+	JwtSigningSecret []byte
+	Authenticator    authenticator.Request
 }
 
 var _ Controller = (*GitHubController)(nil)
@@ -33,45 +35,50 @@ var _ Controller = (*GitHubController)(nil)
 const gitHubUserAPI = "https://api.github.com/user"
 
 func (g GitHubController) Authenticate(w http.ResponseWriter, r *http.Request) {
-	commonAuthenticate(w, r, &g.Config, github.Endpoint)
+	commonAuthenticate(w, r, g.Authenticator, &g.Config, g.JwtSigningSecret, github.Endpoint)
 }
 
 func (g GitHubController) Callback(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	token, err := finishOAuthExchange(ctx, r, &g.Config, github.Endpoint)
+	token, result, err := finishOAuthExchange(ctx, r, g.Authenticator, &g.Config, g.JwtSigningSecret, github.Endpoint)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		logAndWriteResponse(w, "error in GitHub token exchange", err)
+		logAndWriteResponse(w, http.StatusBadRequest, "error in GitHub token exchange", err)
 		return
 	}
 
-	req, err := http.NewRequest("GET", gitHubUserAPI, nil)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logAndWriteResponse(w, "failed to make GitHub request", err)
-		return
-	}
-	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	client := &http.Client{}
-	response, err := client.Do(req)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logAndWriteResponse(w, "failed to get GitHub user", err)
+	if result == oauthFinishK8sAuthRequired {
+		logAndWriteResponse(w, http.StatusUnauthorized, "could not authenticate to Kubernetes", err)
 		return
 	}
 
-	defer func() {
-		if err := response.Body.Close(); err != nil {
-			zap.L().Error("failed to close the response body", zap.Error(err))
-		}
-	}()
+	// Retrieve additional data, if needed
 
-	content, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logAndWriteResponse(w, "failed to parse GitHub user data", err)
-		return
-	}
+	//req, err := http.NewRequest("GET", gitHubUserAPI, nil)
+	//if err != nil {
+	//	logAndWriteResponse(w, http.StatusInternalServerError, "failed to make GitHub request", err)
+	//	return
+	//}
+	//req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	//client := getOauth2HttpClient(ctx)
+	//response, err := client.Do(req)
+	//if err != nil {
+	//	logAndWriteResponse(w, http.StatusInternalServerError, "failed to get GitHub user", err)
+	//	return
+	//}
+	//
+	//defer func() {
+	//	if err := response.Body.Close(); err != nil {
+	//		zap.L().Error("failed to close the response body", zap.Error(err))
+	//	}
+	//}()
+	//
+	//content, err := ioutil.ReadAll(response.Body)
+	//if err != nil {
+	//	logAndWriteResponse(w, http.StatusInternalServerError, "failed to parse GitHub user data", err)
+	//	return
+	//}
 	w.WriteHeader(http.StatusOK)
+
+	// save the token and data to K8s
 	fmt.Fprintf(w, "Oauth Token: %s <br/>", token.AccessToken)
-	fmt.Fprintf(w, "User data: %s", string(content))
+	//fmt.Fprintf(w, "User data: %s", string(content))
 }

@@ -16,16 +16,18 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
-	"io/ioutil"
 	"net/http"
 
-	"go.uber.org/zap"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+
 	"golang.org/x/oauth2"
 )
 
 type QuayController struct {
-	Config config.ServiceProviderConfiguration
+	Config           config.ServiceProviderConfiguration
+	JwtSigningSecret []byte
+	Authenticator    authenticator.Request
 }
 
 var _ Controller = (*QuayController)(nil)
@@ -38,46 +40,49 @@ var quayEndpoint = oauth2.Endpoint{
 }
 
 func (q QuayController) Authenticate(w http.ResponseWriter, r *http.Request) {
-	commonAuthenticate(w, r, &q.Config, quayEndpoint)
+	commonAuthenticate(w, r, q.Authenticator, &q.Config, q.JwtSigningSecret, quayEndpoint)
 }
 
 func (q QuayController) Callback(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	token, err := finishOAuthExchange(ctx, r, &q.Config, quayEndpoint)
+	token, result, err := finishOAuthExchange(ctx, r, q.Authenticator, &q.Config, q.JwtSigningSecret, quayEndpoint)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logAndWriteResponse(w, "error in Quay token exchange", err)
+		logAndWriteResponse(w, http.StatusInternalServerError, "error in Quay token exchange", err)
 		return
 	}
 
-	req, err := http.NewRequest("GET", quayUserAPI, nil)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logAndWriteResponse(w, "failed making Quay request", err)
-		return
-	}
-	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	client := &http.Client{}
-	response, err := client.Do(req)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logAndWriteResponse(w, "failed getting Quay user", err)
+	if result == oauthFinishK8sAuthRequired {
+		logAndWriteResponse(w, http.StatusUnauthorized, "could not authenticate to Kubernetes", err)
 		return
 	}
 
-	defer func() {
-		if err := response.Body.Close(); err != nil {
-			zap.L().Error("failed to close the response body", zap.Error(err))
-		}
-	}()
+	// Retrieve additional data, if needed
 
-	content, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logAndWriteResponse(w, "failed parsing Quay user data", err)
-		return
-	}
+	//req, err := http.NewRequest("GET", quayUserAPI, nil)
+	//if err != nil {
+	//	logAndWriteResponse(w, http.StatusInternalServerError, "failed making Quay request", err)
+	//	return
+	//}
+	//req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	//client := &http.Client{}
+	//response, err := client.Do(req)
+	//if err != nil {
+	//	logAndWriteResponse(w, http.StatusInternalServerError, "failed getting Quay user", err)
+	//	return
+	//}
+	//
+	//defer func() {
+	//	if err := response.Body.Close(); err != nil {
+	//		zap.L().Error("failed to close the response body", zap.Error(err))
+	//	}
+	//}()
+	//
+	//content, err := ioutil.ReadAll(response.Body)
+	//if err != nil {
+	//	logAndWriteResponse(w, http.StatusInternalServerError, "failed parsing Quay user data", err)
+	//	return
+	//}
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Oauth Token: %s", token.AccessToken)
-	fmt.Fprintf(w, "User data: %s", string(content))
+	//fmt.Fprintf(w, "User data: %s", string(content))
 }

@@ -15,8 +15,9 @@ package oauthstate
 
 import (
 	"fmt"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
 	"time"
+
+	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
 
 	"github.com/go-jose/go-jose/v3/jwt"
 )
@@ -25,12 +26,12 @@ import (
 // the information about the user that initiated the OAuth flow because the operator most probably doesn't know
 // the true identity of the initiating human.
 type AnonymousOAuthState struct {
-	TokenName      string   `json:"tokenName"`
-	TokenNamespace string   `json:"tokenNamespace"`
-	IssuedAt       int64    `json:"issuedAt,omitempty"`
-	Scopes         []string `json:"scopes"`
+	TokenName           string                     `json:"tokenName"`
+	TokenNamespace      string                     `json:"tokenNamespace"`
+	IssuedAt            int64                      `json:"issuedAt,omitempty"`
+	Scopes              []string                   `json:"scopes"`
 	ServiceProviderType config.ServiceProviderType `json:"serviceProviderType"`
-	ServiceProviderUrl string `json:"serviceProviderUrl"`
+	ServiceProviderUrl  string                     `json:"serviceProviderUrl"`
 }
 
 func (s *Codec) EncodeAnonymous(state *AnonymousOAuthState) (string, error) {
@@ -56,7 +57,7 @@ func (s *Codec) ParseAnonymous(state string) (AnonymousOAuthState, error) {
 }
 
 func validateAnonymousState(state *AnonymousOAuthState) error {
-	if time.Now().Unix() >= state.IssuedAt {
+	if time.Now().Unix() < state.IssuedAt {
 		return fmt.Errorf("request from the future")
 	}
 	return nil

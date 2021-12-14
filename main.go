@@ -16,12 +16,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/alexflint/go-arg"
 	"net/http"
 	"os"
 	"spi-oauth/config"
 	"spi-oauth/controllers"
 
-	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
@@ -32,6 +32,9 @@ type cliArgs struct {
 	DevMode    bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
 }
 
+func OkHandler(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 func main() {
 	args := cliArgs{}
 	arg.MustParse(&args)
@@ -67,6 +70,8 @@ func start(cfg config.Configuration, port int) {
 		router.Handle(fmt.Sprintf("/%s/callback", sp), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			controller.Callback(context.Background(), w, r)
 		})).Methods("GET")
+		router.HandleFunc("/health", OkHandler).Methods("GET")
+		router.HandleFunc("/ready", OkHandler).Methods("GET")
 	}
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)

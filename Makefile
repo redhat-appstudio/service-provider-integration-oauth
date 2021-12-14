@@ -7,7 +7,7 @@ ifndef VERBOSE
 endif
 
 SPIS_TAG_NAME ?= next
-SPIS_IMAGE_TAG_BASE ?= quay.io/skabashn/service-provider-integration-oauth
+SPIS_IMAGE_TAG_BASE ?= quay.io/redhat-appstudio/service-provider-integration-oauth
 SPIS_IMG ?= $(SPIS_IMAGE_TAG_BASE):$(SPIS_TAG_NAME)
 
 ##@ General

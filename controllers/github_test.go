@@ -13,12 +13,55 @@
 
 package controllers
 
-import "testing"
+import (
+	"bytes"
+	"fmt"
+	"github.com/go-jose/go-jose/v3/json"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
+	"io/ioutil"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+)
 
-func TestTokenSentWhenRetrievingUserDetails(t *testing.T) {
+func TestTokenSentWhenRetrievingGitHubUserDetails(t *testing.T) {
+	bakedResponse, _ := json.Marshal(map[string]interface{}{
+		"id": 123,
+		"login": "mylogin",
+	})
 
-}
+	githubReached := false
+	authorizationSet := false
 
-func TestErrorOnInvalidData(t *testing.T) {
+	metadata, err := retrieveGitHubUserDetails(&http.Client{
+		Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
+			if strings.HasPrefix(r.URL.String(), "https://api.github.com/user") {
+				githubReached = true
 
+				authorizationSet = r.Header.Get("Authorization") == "Bearer tkn"
+
+				return &http.Response{
+					StatusCode: 200,
+					Header:     http.Header{},
+					Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
+					Request:    r,
+				}, nil
+			}
+
+			return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
+		}),
+	}, &oauth2.Token{
+		AccessToken:  "tkn",
+		TokenType:    "asdf",
+		RefreshToken: "rtkn",
+		Expiry:       time.Now(),
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, githubReached)
+	assert.True(t, authorizationSet)
+	assert.Equal(t, "123", metadata.UserId)
+	assert.Equal(t, "mylogin", metadata.UserName)
 }

@@ -14,11 +14,11 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/go-jose/go-jose/v3/json"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"go.uber.org/zap"
 
@@ -58,13 +58,20 @@ func retrieveQuayUserDetails(client *http.Client, token *oauth2.Token) (*v1beta1
 		return nil, err
 	}
 
-	content := map[string]string{}
+	content := map[string]interface{}{}
 
-	if err = json.Unmarshal(data, content); err != nil {
+	if err = json.Unmarshal(data, &content); err != nil {
 		return nil, err
 	}
 
+	var username string
+	if u, ok := content["username"]; ok {
+		username = u.(string)
+	} else {
+		return nil, fmt.Errorf("failed to determine the user name from the Quay response")
+	}
+
 	return &v1beta1.TokenMetadata{
-		UserName: content["username"],
+		UserName: username,
 	}, nil
 }

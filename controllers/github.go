@@ -14,11 +14,12 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
-	"github.com/go-jose/go-jose/v3/json"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -52,17 +53,24 @@ func retrieveGitHubUserDetails(client *http.Client, token *oauth2.Token) (*v1bet
 		return nil, err
 	}
 
-	content := map[string]string{}
+	content := map[string]interface{}{}
 
-	if err = json.Unmarshal(data, content); err != nil {
+	if err = json.Unmarshal(data, &content); err != nil {
 		return nil, err
 	}
 
-	userId := content["id"]
-	userName := content["login"]
 
-	if len(userId) == 0 || len(userName) == 0 {
-		zap.L().Warn("failed to retrieve user details from GitHub")
+	var userId string
+	userName := content["login"].(string)
+
+	if len(userName) == 0 {
+		return nil, fmt.Errorf("failed to determine the user name from the GitHub response")
+	}
+
+	if _, ok := content["id"]; ok {
+		userId = strconv.FormatFloat(content["id"].(float64), 'f', -1, 64)
+	} else {
+		return nil, fmt.Errorf("failed to determine the user ID from the GitHub response")
 	}
 
 	return &v1beta1.TokenMetadata{

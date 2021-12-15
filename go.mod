@@ -9,6 +9,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/redhat-appstudio/service-provider-integration-operator v0.0.0
+	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
@@ -20,4 +21,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.10.3
 )
 
-replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20211215151911-14409bda9146
+replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20211215202404-45165e4edc09

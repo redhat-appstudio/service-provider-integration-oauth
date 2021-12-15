@@ -12,3 +12,54 @@
 // limitations under the License.
 
 package controllers
+
+import (
+	"bytes"
+	"fmt"
+	"github.com/go-jose/go-jose/v3/json"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
+	"io/ioutil"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestTokenSentWhenRetrievingQuayUserDetails(t *testing.T) {
+	bakedResponse, _ := json.Marshal(map[string]interface{}{
+		"username": "mylogin",
+	})
+
+	githubReached := false
+	authorizationSet := false
+
+	metadata, err := retrieveQuayUserDetails(&http.Client{
+		Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
+			if strings.HasPrefix(r.URL.String(), "https://quay.io/api/v1/user") {
+				githubReached = true
+
+				authorizationSet = r.Header.Get("Authorization") == "Bearer tkn"
+
+				return &http.Response{
+					StatusCode: 200,
+					Header:     http.Header{},
+					Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
+					Request:    r,
+				}, nil
+			}
+
+			return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
+		}),
+	}, &oauth2.Token{
+		AccessToken:  "tkn",
+		TokenType:    "asdf",
+		RefreshToken: "rtkn",
+		Expiry:       time.Now(),
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, githubReached)
+	assert.True(t, authorizationSet)
+	assert.Equal(t, "mylogin", metadata.UserName)
+}

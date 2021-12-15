@@ -178,11 +178,11 @@ var _ = Describe("Controller", func() {
 				RefreshToken: "refresh",
 				Expiry:       time.Now(),
 			})
-			githubReached := false
+			serviceProviderReached := false
 			ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
 				Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
 					if strings.HasPrefix(r.URL.String(), "https://from.hell") {
-						githubReached = true
+						serviceProviderReached = true
 						return &http.Response{
 							StatusCode: 200,
 							Header:     http.Header{},
@@ -198,7 +198,7 @@ var _ = Describe("Controller", func() {
 			g.Callback(ctx, res, req)
 
 			Expect(res.Code).To(Equal(http.StatusOK))
-			Expect(githubReached).To(BeTrue())
+			Expect(serviceProviderReached).To(BeTrue())
 		})
 	})
 })

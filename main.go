@@ -18,11 +18,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/alexflint/go-arg"
 
-	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
@@ -68,13 +69,16 @@ func start(cfg config.Configuration, port int) {
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}
-		router.Handle(fmt.Sprintf("/%s/authenticate", sp), http.HandlerFunc(controller.Authenticate)).Methods("GET")
-		router.Handle(fmt.Sprintf("/%s/callback", sp), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		prefix := strings.ToLower(string(sp.ServiceProviderType))
+
+		router.Handle(fmt.Sprintf("/%s/authenticate", prefix), http.HandlerFunc(controller.Authenticate)).Methods("GET")
+		router.Handle(fmt.Sprintf("/%s/callback", prefix), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			controller.Callback(context.Background(), w, r)
 		})).Methods("GET")
-		router.HandleFunc("/health", OkHandler).Methods("GET")
-		router.HandleFunc("/ready", OkHandler).Methods("GET")
 	}
+	router.HandleFunc("/health", OkHandler).Methods("GET")
+	router.HandleFunc("/ready", OkHandler).Methods("GET")
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 	if err != nil {

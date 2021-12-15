@@ -15,11 +15,12 @@ package controllers
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/go-jose/go-jose/v3/json"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"go.uber.org/zap"
-	"io/ioutil"
-	"net/http"
 
 	"golang.org/x/oauth2"
 )

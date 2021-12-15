@@ -15,11 +15,12 @@ package controllers
 
 import (
 	"context"
+	"testing"
+
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

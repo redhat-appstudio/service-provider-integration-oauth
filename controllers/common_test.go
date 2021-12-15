@@ -17,14 +17,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"time"
+
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/oauthstate"
 	corev1 "k8s.io/api/core/v1"
@@ -87,18 +88,18 @@ var _ = Describe("Controller", func() {
 				ClientSecret: "clientSecret",
 				RedirectUrl:  "http://redirect.url",
 			},
-			JwtSigningSecret:     []byte("secret"),
-			Authenticator:        auth,
-			K8sClient:            IT.Client,
-			TokenStorage:         IT.TokenStorage,
-			Endpoint:             oauth2.Endpoint{
+			JwtSigningSecret: []byte("secret"),
+			Authenticator:    auth,
+			K8sClient:        IT.Client,
+			TokenStorage:     IT.TokenStorage,
+			Endpoint: oauth2.Endpoint{
 				AuthURL:   "https://from.hell/login",
 				TokenURL:  "https://from.hell/toekn",
 				AuthStyle: oauth2.AuthStyleAutoDetect,
 			},
-			RetrieveUserMetadata: func(ctx context.Context, token *oauth2.Token) (*v1beta1.TokenMetadata, error) {
+			RetrieveUserMetadata: func(cl *http.Client, token *oauth2.Token) (*v1beta1.TokenMetadata, error) {
 				return &v1beta1.TokenMetadata{
-					UserId: "123",
+					UserId:   "123",
 					UserName: "john-doe",
 				}, nil
 			},
@@ -141,10 +142,10 @@ var _ = Describe("Controller", func() {
 		BeforeEach(func() {
 			Expect(IT.Client.Create(IT.Context, &v1beta1.SPIAccessToken{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "mytoken",
+					Name:      "mytoken",
 					Namespace: IT.Namespace,
 				},
-				Spec:       v1beta1.SPIAccessTokenSpec{
+				Spec: v1beta1.SPIAccessTokenSpec{
 					ServiceProviderType: "SP_From_Hell",
 					ServiceProviderUrl:  "https://from.hell",
 				},
@@ -153,7 +154,7 @@ var _ = Describe("Controller", func() {
 
 		AfterEach(func() {
 			t := &v1beta1.SPIAccessToken{}
-			Expect(IT.Client.Get(IT.Context, client.ObjectKey{Name: "tokenName", Namespace: IT.Namespace}, t)).To(Succeed())
+			Expect(IT.Client.Get(IT.Context, client.ObjectKey{Name: "mytoken", Namespace: IT.Namespace}, t)).To(Succeed())
 			Expect(IT.Client.Delete(IT.Context, t)).To(Succeed())
 		})
 

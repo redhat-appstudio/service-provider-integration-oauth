@@ -15,12 +15,13 @@ package controllers
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/go-jose/go-jose/v3/json"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
-	"io/ioutil"
-	"net/http"
 )
 
 const gitHubUserAPI = "https://api.github.com/user"
@@ -65,7 +66,7 @@ func retrieveGitHubUserDetails(client *http.Client, token *oauth2.Token) (*v1bet
 	}
 
 	return &v1beta1.TokenMetadata{
-		UserId: userId,
+		UserId:   userId,
 		UserName: userName,
 	}, nil
 }

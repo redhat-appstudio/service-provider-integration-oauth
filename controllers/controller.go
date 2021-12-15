@@ -16,13 +16,14 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/redhat-appstudio/service-provider-integration-oauth/authn"
@@ -68,7 +69,7 @@ func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceP
 	}
 
 	var endpoint oauth2.Endpoint
-	var userDetails func(context.Context, *oauth2.Token) (*v1beta1.TokenMetadata, error)
+	var userDetails func(*http.Client, *oauth2.Token) (*v1beta1.TokenMetadata, error)
 
 	switch spConfig.ServiceProviderType {
 	case config.ServiceProviderTypeGitHub:

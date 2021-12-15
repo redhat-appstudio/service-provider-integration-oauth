@@ -15,6 +15,10 @@ package controllers
 
 import (
 	"context"
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -23,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -36,7 +39,9 @@ var IT = struct {
 	Cancel          context.CancelFunc
 	Scheme          *runtime.Scheme
 	Namespace       string
-	Client          *kubernetes.Clientset
+	Client          client.Client
+	Clientset       *kubernetes.Clientset
+	TokenStorage    tokenstorage.TokenStorage
 }{}
 
 func TestSuite(t *testing.T) {
@@ -80,17 +85,24 @@ var _ = BeforeSuite(func() {
 
 	Expect(corev1.AddToScheme(IT.Scheme)).To(Succeed())
 	Expect(auth.AddToScheme(IT.Scheme)).To(Succeed())
+	Expect(v1beta1.AddToScheme(IT.Scheme)).To(Succeed())
 
 	// create the test namespace which we'll use for the tests
-	IT.Client, err = kubernetes.NewForConfig(IT.TestEnvironment.Config)
+	IT.Client, err = client.New(IT.TestEnvironment.Config, client.Options{Scheme: IT.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 
-	ns, err := IT.Client.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
+	IT.Clientset, err = kubernetes.NewForConfig(IT.TestEnvironment.Config)
+	Expect(err).NotTo(HaveOccurred())
+
+	IT.TokenStorage, err = tokenstorage.New(IT.Client)
+	Expect(err).NotTo(HaveOccurred())
+
+	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "spi-oauth-test-",
 		},
-	}, metav1.CreateOptions{})
-	Expect(err).NotTo(HaveOccurred())
+	}
+	Expect(IT.Client.Create(context.TODO(), ns)).To(Succeed())
 	IT.Namespace = ns.Name
 
 	//[SELF_CONTAINED_TEST_ATTEMPT]
@@ -135,7 +147,9 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	Expect(IT.Client.CoreV1().Namespaces().Delete(context.TODO(), IT.Namespace, metav1.DeleteOptions{})).To(Succeed())
+	ns := &corev1.Namespace{}
+	Expect(IT.Client.Get(context.TODO(), client.ObjectKey{Name: IT.Namespace}, ns)).To(Succeed())
+	Expect(IT.Client.Delete(context.TODO(), ns)).To(Succeed())
 	IT.Cancel()
 	Expect(IT.TestEnvironment.Stop()).To(Succeed())
 })

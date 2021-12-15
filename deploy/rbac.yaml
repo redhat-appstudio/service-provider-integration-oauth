@@ -1,0 +1,24 @@
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: spi-oauth-sa
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: spi-oauth-role
+rules:
+  - apiGroups:
+      - v1
+    resources:
+      - secrets
+    verbs:
+      - create
+  - apiGroups:
+      - appstudio.redhat.com
+    resources:
+      - spiaccesstokenbindings
+    verbs:
+      - get
+      - update

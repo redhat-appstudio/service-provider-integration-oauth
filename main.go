@@ -21,7 +21,7 @@ import (
 
 	"github.com/alexflint/go-arg"
 
-	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
 
 	"github.com/gorilla/mux"

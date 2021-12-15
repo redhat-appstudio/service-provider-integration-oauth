@@ -19,13 +19,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	authn "k8s.io/apiserver/pkg/authentication/authenticator"
 	authnfactory "k8s.io/apiserver/pkg/authentication/authenticatorfactory"
 )
 
 func NewFromConfig(cfg config.Configuration) (authn.Request, error) {
-	return New(cfg.KubernetesClient, cfg.KubernetesAuthAudiences)
+	cl, err := cfg.KubernetesClientset()
+	if err != nil {
+		return nil, err
+	}
+
+	return New(cl, cfg.KubernetesAuthAudiences)
 }
 
 func New(client *kubernetes.Clientset, audiences []string) (authn.Request, error) {

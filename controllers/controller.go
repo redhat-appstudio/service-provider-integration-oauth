@@ -16,15 +16,17 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/github"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"net/http"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/redhat-appstudio/service-provider-integration-oauth/authn"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/config"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/oauthstate"
-	"go.uber.org/zap"
-	"golang.org/x/oauth2"
-	"k8s.io/apiserver/pkg/authentication/authenticator"
-	"k8s.io/apiserver/pkg/authentication/user"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 )
 
 type Controller interface {
@@ -46,157 +48,46 @@ func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceP
 		return nil, err
 	}
 
+	scheme := runtime.NewScheme()
+	if err = corev1.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+
+	if err = v1beta1.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
+
+	cl, err := fullConfig.KubernetesClient(client.Options{Scheme: scheme})
+	if err != nil {
+		return nil, err
+	}
+
+	ts, err := tokenstorage.New(cl)
+	if err != nil {
+		return nil, err
+	}
+
+	var endpoint oauth2.Endpoint
+	var userDetails func(context.Context, *oauth2.Token) (*v1beta1.TokenMetadata, error)
+
 	switch spConfig.ServiceProviderType {
 	case config.ServiceProviderTypeGitHub:
-		return &GitHubController{Config: spConfig, JwtSigningSecret: fullConfig.SharedSecret, Authenticator: authtor}, nil
+		endpoint = github.Endpoint
+		userDetails = retrieveGitHubUserDetails
 	case config.ServiceProviderTypeQuay:
-		return &QuayController{Config: spConfig, JwtSigningSecret: fullConfig.SharedSecret, Authenticator: authtor}, nil
-	}
-	return nil, fmt.Errorf("not implemented yet")
-}
-
-func newOAuth2Config(cfg *config.ServiceProviderConfiguration) oauth2.Config {
-	return oauth2.Config{
-		ClientID:     cfg.ClientId,
-		ClientSecret: cfg.ClientSecret,
-		RedirectURL:  cfg.RedirectUrl,
-	}
-}
-
-func commonAuthenticate(w http.ResponseWriter, r *http.Request, auth authenticator.Request, cfg *config.ServiceProviderConfiguration, jwtSecret []byte, endpoint oauth2.Endpoint) {
-	stateString := r.FormValue("state")
-	codec, err := oauthstate.NewCodec(jwtSecret)
-	if err != nil {
-		logAndWriteResponse(w, http.StatusInternalServerError, "failed to instantiate OAuth stateString codec", err)
-		return
+		endpoint = quayEndpoint
+		userDetails = retrieveQuayUserDetails
+	default:
+		return nil, fmt.Errorf("not implemented yet")
 	}
 
-	state, err := codec.ParseAnonymous(stateString)
-	if err != nil {
-		logAndWriteResponse(w, http.StatusBadRequest, "failed to decode the OAuth state", err)
-		return
-	}
-
-	// needs to be obtained before AuthenticateRequest call that removes it from the request!
-	authorizationHeader := r.Header.Get("Authorization")
-
-	authResponse, _, err := auth.AuthenticateRequest(r)
-	if err != nil {
-		logAndWriteResponse(w, http.StatusUnauthorized, "failed to authenticate the request in Kubernetes", err)
-		return
-	}
-
-	identity := user.DefaultInfo{
-		Name:   authResponse.User.GetName(),
-		UID:    authResponse.User.GetUID(),
-		Groups: authResponse.User.GetGroups(),
-		Extra:  authResponse.User.GetExtra(),
-	}
-	authedState := oauthstate.AuthenticatedOAuthState{
-		AnonymousOAuthState: state,
-		KubernetesIdentity:  identity,
-		AuthorizationHeader: authorizationHeader,
-	}
-
-	oauthCfg := newOAuth2Config(cfg)
-	oauthCfg.Endpoint = endpoint
-	oauthCfg.Scopes = authedState.Scopes
-
-	stateString, err = codec.EncodeAuthenticated(&authedState)
-	if err != nil {
-		logAndWriteResponse(w, http.StatusInternalServerError, "failed to encode OAuth state", err)
-	}
-
-	url := oauthCfg.AuthCodeURL(stateString)
-
-	http.Redirect(w, r, url, http.StatusFound)
-}
-
-func finishOAuthExchange(ctx context.Context, r *http.Request, auth authenticator.Request, cfg *config.ServiceProviderConfiguration, jwtSecret []byte, endpoint oauth2.Endpoint) (*oauth2.Token, oauthFinishResult, error) {
-	// TODO support the implicit flow here, too?
-
-	// check that the state is correct
-	stateString := r.FormValue("state")
-	codec, err := oauthstate.NewCodec(jwtSecret)
-	if err != nil {
-		return nil, oauthFinishError, err
-	}
-
-	state, err := codec.ParseAuthenticated(stateString)
-	if err != nil {
-		return nil, oauthFinishError, err
-	}
-
-	r.Header.Set("Authorization", state.AuthorizationHeader)
-
-	authResponse, _, err := auth.AuthenticateRequest(r)
-	if err != nil {
-		return nil, oauthFinishError, err
-	}
-
-	if state.KubernetesIdentity.Name != authResponse.User.GetName() ||
-		!equalMapOfSlicesUnordered(state.KubernetesIdentity.Extra, authResponse.User.GetExtra()) ||
-		state.KubernetesIdentity.UID != authResponse.User.GetUID() ||
-		!equalSliceUnOrdered(state.KubernetesIdentity.Groups, authResponse.User.GetGroups()) {
-
-		return nil, oauthFinishK8sAuthRequired, fmt.Errorf("kubernetes identity doesn't match after completing the OAuth flow")
-	}
-
-	// the state is ok, let's retrieve the token from the service provider
-	oauthCfg := newOAuth2Config(cfg)
-	oauthCfg.Endpoint = endpoint
-
-	code := r.FormValue("code")
-
-	token, err := oauthCfg.Exchange(ctx, code)
-	if err != nil {
-		return nil, oauthFinishError, err
-	}
-	return token, oauthFinishAuthenticated, nil
-}
-
-func logAndWriteResponse(w http.ResponseWriter, status int, msg string, err error) {
-	w.WriteHeader(status)
-	_, _ = fmt.Fprintf(w, msg+": ", err.Error())
-	zap.L().Error(msg, zap.Error(err))
-}
-
-func equalMapOfSlicesUnordered(a map[string][]string, b map[string][]string) bool {
-	for k, v := range a {
-		if !equalSliceUnOrdered(v, b[k]) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func equalSliceUnOrdered(as []string, bs []string) bool {
-	if len(as) != len(bs) {
-		return false
-	}
-
-as:
-	for _, a := range as {
-		for _, b := range bs {
-			if a == b {
-				continue as
-			}
-		}
-
-		return false
-	}
-
-	return true
-}
-
-// getOauth2HttpClient tries to find the HTTP client used by the OAuth2 library in the context.
-// This is useful mainly in tests where we can use mocked responses even for our own calls.
-func getOauth2HttpClient(ctx context.Context) *http.Client {
-	cl, _ := ctx.Value(oauth2.HTTPClient).(*http.Client)
-	if cl != nil {
-		return cl
-	}
-
-	return &http.Client{}
+	return &commonController{
+		Config:               spConfig,
+		JwtSigningSecret:     fullConfig.SharedSecret,
+		Authenticator:        authtor,
+		K8sClient:            cl,
+		TokenStorage:         ts,
+		Endpoint:             endpoint,
+		RetrieveUserMetadata: userDetails,
+	}, nil
 }

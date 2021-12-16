@@ -10,12 +10,14 @@ COPY go.sum go.sum
 
 # Copy the go sources
 COPY main.go main.go
+COPY authn/ authn/
 COPY controllers/ controllers/
 COPY config/ config/
 
 # build service
+# Note that we're not running the tests here. Our integration tests depend on a running cluster which would not be
+# available in the docker build.
 RUN export ARCH="$(uname -m)" && if [[ ${ARCH} == "x86_64" ]]; then export ARCH="amd64"; elif [[ ${ARCH} == "aarch64" ]]; then export ARCH="arm64"; fi && \
-    go test -v ./... && \
     CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} go build -a -o spi-oauth main.go
 
 FROM registry.access.redhat.com/ubi8-minimal:8.4-212

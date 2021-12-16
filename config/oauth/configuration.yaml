@@ -1,0 +1,16 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: config
+data:
+  config.yaml: |
+    sharedSecretFile: ` + secretFilePath + `
+    serviceProviders:
+      - type: GitHub
+        clientId: "123"
+        clientSecret: "42"
+        redirectUrl: https://localhost:8080/github/callback
+      - type: Quay
+        clientId: "456"
+        clientSecret: "54"
+        redirectUrl: https://localhost:8080/quay/callback

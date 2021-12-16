@@ -59,7 +59,6 @@ func retrieveGitHubUserDetails(client *http.Client, token *oauth2.Token) (*v1bet
 		return nil, err
 	}
 
-
 	var userId string
 	userName := content["login"].(string)
 

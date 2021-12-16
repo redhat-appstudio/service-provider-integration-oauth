@@ -16,14 +16,15 @@ package controllers
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-jose/go-jose/v3/json"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/oauth2"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-jose/go-jose/v3/json"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/oauth2"
 )
 
 func TestTokenSentWhenRetrievingQuayUserDetails(t *testing.T) {

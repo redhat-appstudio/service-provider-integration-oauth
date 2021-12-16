@@ -1,0 +1,20 @@
+namespace: spi-system
+
+namePrefix: spi-oauth-
+
+images:
+- name: oauth
+  newName: quay.io/redhat-appstudio/service-provider-integration-oauth
+  newTag: latest
+
+commonLabels:
+  app.kubernetes.io/name: service-provider-integration-oauth
+  app.kubernetes.io/part-of: service-provider-integration-operator
+
+resources:
+- deployment.yaml
+- role.yaml
+- role-binding.yaml
+- service-account.yaml
+- service.yaml
+- ingress.yaml

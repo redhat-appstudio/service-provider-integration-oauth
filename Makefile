@@ -45,6 +45,10 @@ docker-build: fmt fmt_license vet ## Builds the docker image. Use the SPI_IMG en
 docker-push: docker-build ## Pushes the image. Use the SPI_IMG env var to override the image tag
 	docker push ${SPIS_IMG}
 
+deploy: kustomize ## Deploys the OAuth service to the cluster specified in ~/.kube/config.
+	cd config/oauth && $(KUSTOMIZE) edit set image oauth=${SPIS_IMG} && cd ../..
+	$(KUSTOMIZE) build config/oauth | kubectl apply -f -
+
 fmt:
   ifneq ($(shell command -v goimports 2> /dev/null),)
 	  find . -not -path '*/\.*' -name '*.go' -exec goimports -w {} \;
@@ -65,6 +69,10 @@ fmt_license:
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+
+KUSTOMIZE = $(shell pwd)/bin/kustomize
+kustomize: ## Download kustomize locally if necessary.
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))

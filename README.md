@@ -53,7 +53,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-          image:  quay.io/skabashn/service-provider-integration-oauth:main_2021_12_16_09_40_57
+          image:  quay.io/redhat-appstudio/service-provider-integration-oauth
           imagePullPolicy: Always
           volumeMounts:
           - name: config

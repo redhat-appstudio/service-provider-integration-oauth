@@ -84,9 +84,9 @@ var _ = Describe("Controller", func() {
 
 		return &commonController{
 			Config: config.ServiceProviderConfiguration{
-				ClientId:     "clientId",
-				ClientSecret: "clientSecret",
-				RedirectUrl:  "http://redirect.url",
+				ClientId:            "clientId",
+				ClientSecret:        "clientSecret",
+				ServiceProviderType: config.ServiceProviderTypeGitHub,
 			},
 			JwtSigningSecret: []byte("secret"),
 			Authenticator:    auth,

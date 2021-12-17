@@ -12,7 +12,6 @@ COPY go.sum go.sum
 COPY main.go main.go
 COPY authn/ authn/
 COPY controllers/ controllers/
-COPY config/ config/
 
 # build service
 # Note that we're not running the tests here. Our integration tests depend on a running cluster which would not be

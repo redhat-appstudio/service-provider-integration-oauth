@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
@@ -36,15 +37,20 @@ type commonController struct {
 	K8sClient            client.Client
 	TokenStorage         tokenstorage.TokenStorage
 	Endpoint             oauth2.Endpoint
+	BaseUrl              string
 	RetrieveUserMetadata func(cl *http.Client, token *oauth2.Token) (*v1beta1.TokenMetadata, error)
 }
 
-func newOAuth2Config(cfg *config.ServiceProviderConfiguration) oauth2.Config {
+func (c *commonController) newOAuth2Config() oauth2.Config {
 	return oauth2.Config{
-		ClientID:     cfg.ClientId,
-		ClientSecret: cfg.ClientSecret,
-		RedirectURL:  cfg.RedirectUrl,
+		ClientID:     c.Config.ClientId,
+		ClientSecret: c.Config.ClientSecret,
+		RedirectURL:  c.redirectUrl(),
 	}
+}
+
+func (c *commonController) redirectUrl() string {
+	return strings.TrimSuffix(c.BaseUrl, "/") + "/" + strings.ToLower(string(c.Config.ServiceProviderType)) + "/callback"
 }
 
 func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +88,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		AuthorizationHeader: authorizationHeader,
 	}
 
-	oauthCfg := newOAuth2Config(&c.Config)
+	oauthCfg := c.newOAuth2Config()
 	oauthCfg.Endpoint = c.Endpoint
 	oauthCfg.Scopes = authedState.Scopes
 
@@ -155,7 +161,7 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	}
 
 	// the state is ok, let's retrieve the token from the service provider
-	oauthCfg := newOAuth2Config(&c.Config)
+	oauthCfg := c.newOAuth2Config()
 	oauthCfg.Endpoint = endpoint
 
 	code := r.FormValue("code")

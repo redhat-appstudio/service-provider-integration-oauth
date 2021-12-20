@@ -70,9 +70,14 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	// needs to be obtained before AuthenticateRequest call that removes it from the request!
 	authorizationHeader := r.Header.Get("Authorization")
 
-	authResponse, _, err := c.Authenticator.AuthenticateRequest(r)
+	authResponse, result, err := c.Authenticator.AuthenticateRequest(r)
 	if err != nil {
 		logAndWriteResponse(w, http.StatusUnauthorized, "failed to authenticate the request in Kubernetes", err)
+		return
+	}
+	if !result {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = fmt.Fprintf(w, "failed to authenticate the request in Kubernetes")
 		return
 	}
 

@@ -89,6 +89,7 @@ func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceP
 		K8sClient:            cl,
 		TokenStorage:         ts,
 		Endpoint:             endpoint,
+		BaseUrl:              fullConfig.BaseUrl,
 		RetrieveUserMetadata: userDetails,
 	}, nil
 }

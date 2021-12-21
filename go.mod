@@ -21,4 +21,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.10.3
 )
 
-replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20211220142044-ba16839a32f9
+replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20211221132511-34e25baa85f0

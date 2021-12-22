@@ -27,11 +27,14 @@ import (
 
 const quayUserAPI = "https://quay.io/api/v1/user"
 
+// quayEndpoint is the OAuth endpoints specification of quay.io
 var quayEndpoint = oauth2.Endpoint{
 	AuthURL:  "https://quay.io/oauth/authorize",
 	TokenURL: "https://quay.io/oauth/token",
 }
 
+// retrieveQuayUserDetails reads the user details from the Quay API. Note that Quay doesn't really have a notion
+// of user ID.s
 func retrieveQuayUserDetails(client *http.Client, token *oauth2.Token) (*v1beta1.TokenMetadata, error) {
 	req, err := http.NewRequest("GET", quayUserAPI, nil)
 	if err != nil {

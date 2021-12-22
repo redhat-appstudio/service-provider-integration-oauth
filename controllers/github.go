@@ -27,6 +27,7 @@ import (
 
 const gitHubUserAPI = "https://api.github.com/user"
 
+// retrieveGitHubUserDetails reads the user details from the GitHub API.
 func retrieveGitHubUserDetails(client *http.Client, token *oauth2.Token) (*v1beta1.TokenMetadata, error) {
 	req, err := http.NewRequest("GET", gitHubUserAPI, nil)
 	if err != nil {

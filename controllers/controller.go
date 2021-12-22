@@ -30,11 +30,19 @@ import (
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 )
 
+// Controller implements the OAuth flow. There are specific implementations for each service provider type. These
+// are usually instances of the commonController with service-provider-specific configuration.
 type Controller interface {
+	// Authenticate handles the initial OAuth request. It should validate that the request is authenticated in Kubernetes
+	// compose the authenticated OAuth state and return a redirect to the service-provider OAuth endpoint with the state.
 	Authenticate(w http.ResponseWriter, r *http.Request)
+
+	// Callback finishes the OAuth flow. It handles the final redirect from the OAuth flow of the service provider.
 	Callback(ctx context.Context, w http.ResponseWriter, r *http.Request)
 }
 
+// oauthFinishResult is an enum listing the possible results of authentication during the commonController.finishOAuthExchange
+// method.
 type oauthFinishResult int
 
 const (
@@ -43,6 +51,8 @@ const (
 	oauthFinishError
 )
 
+// FromConfiguration is a factory function to create instances of the Controller based on the service provider
+// configuration.
 func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceProviderConfiguration) (Controller, error) {
 	authtor, err := authentication.NewFromConfig(fullConfig)
 	if err != nil {

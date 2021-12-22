@@ -30,6 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// commonController is the implementation of the Controller interface that assumes typical OAuth flow. It can be adapted
+// to various service providers by supplying a SP-specific RetrieveUserMetadata function.
 type commonController struct {
 	Config               config.ServiceProviderConfiguration
 	JwtSigningSecret     []byte
@@ -41,6 +43,8 @@ type commonController struct {
 	RetrieveUserMetadata func(cl *http.Client, token *oauth2.Token) (*v1beta1.TokenMetadata, error)
 }
 
+// newOAuth2Config returns a new instance of the oauth2.Config struct with the clientId, clientSecret and redirect URL
+// specific to this controller.
 func (c *commonController) newOAuth2Config() oauth2.Config {
 	return oauth2.Config{
 		ClientID:     c.Config.ClientId,
@@ -49,6 +53,7 @@ func (c *commonController) newOAuth2Config() oauth2.Config {
 	}
 }
 
+// redirectUrl constructs the URL to the callback endpoint so that it can be handled by this controller.
 func (c *commonController) redirectUrl() string {
 	return strings.TrimSuffix(c.BaseUrl, "/") + "/" + strings.ToLower(string(c.Config.ServiceProviderType)) + "/callback"
 }
@@ -135,6 +140,8 @@ func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r
 	w.WriteHeader(http.StatusOK)
 }
 
+// finishOAuthExchange implements the bulk of the Callback function. It returns the token, if obtained, the decoded
+// state from the oauth flow, if available, and the result of the authentication.
 func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Request, endpoint oauth2.Endpoint) (*oauth2.Token, *oauthstate.AuthenticatedOAuthState, oauthFinishResult, error) {
 	// TODO support the implicit flow here, too?
 
@@ -178,6 +185,7 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	return token, &state, oauthFinishAuthenticated, nil
 }
 
+// syncTokenData stores the data of the token to the configured TokenStorage.
 func (c commonController) syncTokenData(ctx context.Context, token *oauth2.Token, state *oauthstate.AuthenticatedOAuthState, metadata *v1beta1.TokenMetadata) error {
 	accessToken := &v1beta1.SPIAccessToken{}
 

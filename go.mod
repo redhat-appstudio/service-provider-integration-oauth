@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
-	github.com/redhat-appstudio/service-provider-integration-operator v0.0.0
+	github.com/redhat-appstudio/service-provider-integration-operator v0.0.0-20211222134112-56b11ea2c0e6
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
@@ -20,5 +20,3 @@ require (
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
 	sigs.k8s.io/controller-runtime v0.10.3
 )
-
-replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20211221132511-34e25baa85f0

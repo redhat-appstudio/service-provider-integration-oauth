@@ -51,8 +51,8 @@ var _ = Describe("Controller", func() {
 			TokenNamespace:      IT.Namespace,
 			IssuedAt:            time.Now().Unix(),
 			Scopes:              []string{"a", "b"},
-			ServiceProviderType: "SP_From_Hell",
-			ServiceProviderUrl:  "https://from.hell",
+			ServiceProviderType: "My_Special_SP",
+			ServiceProviderUrl:  "https://special.sp",
 		})
 		Expect(err).NotTo(HaveOccurred())
 		return ret
@@ -93,8 +93,8 @@ var _ = Describe("Controller", func() {
 			K8sClient:        IT.Client,
 			TokenStorage:     IT.TokenStorage,
 			Endpoint: oauth2.Endpoint{
-				AuthURL:   "https://from.hell/login",
-				TokenURL:  "https://from.hell/toekn",
+				AuthURL:   "https://special.sp/login",
+				TokenURL:  "https://special.sp/toekn",
 				AuthStyle: oauth2.AuthStyleAutoDetect,
 			},
 			RetrieveUserMetadata: func(cl *http.Client, token *oauth2.Token) (*v1beta1.TokenMetadata, error) {
@@ -103,6 +103,7 @@ var _ = Describe("Controller", func() {
 					UserName: "john-doe",
 				}, nil
 			},
+			BaseUrl: "https://spi.on.my.machine",
 		}
 	}
 
@@ -129,10 +130,10 @@ var _ = Describe("Controller", func() {
 		redirect, err := url.Parse(res.Header().Get("Location"))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(redirect.Scheme).To(Equal("https"))
-		Expect(redirect.Host).To(Equal("from.hell"))
+		Expect(redirect.Host).To(Equal("special.sp"))
 		Expect(redirect.Path).To(Equal("/login"))
 		Expect(redirect.Query().Get("client_id")).To(Equal("clientId"))
-		Expect(redirect.Query().Get("redirect_uri")).To(Equal("http://redirect.url"))
+		Expect(redirect.Query().Get("redirect_uri")).To(Equal("https://spi.on.my.machine/github/callback"))
 		Expect(redirect.Query().Get("response_type")).To(Equal("code"))
 		Expect(redirect.Query().Get("state")).NotTo(BeEmpty())
 		Expect(redirect.Query().Get("scope")).To(Equal("a b"))
@@ -146,8 +147,8 @@ var _ = Describe("Controller", func() {
 					Namespace: IT.Namespace,
 				},
 				Spec: v1beta1.SPIAccessTokenSpec{
-					ServiceProviderType: "SP_From_Hell",
-					ServiceProviderUrl:  "https://from.hell",
+					ServiceProviderType: "My_Special_SP",
+					ServiceProviderUrl:  "https://special.sp",
 				},
 			})).To(Succeed())
 		})
@@ -181,7 +182,7 @@ var _ = Describe("Controller", func() {
 			serviceProviderReached := false
 			ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
 				Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
-					if strings.HasPrefix(r.URL.String(), "https://from.hell") {
+					if strings.HasPrefix(r.URL.String(), "https://special.sp") {
 						serviceProviderReached = true
 						return &http.Response{
 							StatusCode: 200,

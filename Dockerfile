@@ -10,7 +10,7 @@ COPY go.sum go.sum
 
 # Copy the go sources
 COPY main.go main.go
-COPY authn/ authn/
+COPY authentication/ authentication/
 COPY controllers/ controllers/
 
 # build service

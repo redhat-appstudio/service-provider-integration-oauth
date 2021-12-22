@@ -35,7 +35,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/go-jose/go-jose/v3/json"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/authn"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/authentication"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"golang.org/x/oauth2"
 )
@@ -79,7 +79,7 @@ var _ = Describe("Controller", func() {
 	}
 
 	prepareController := func() *commonController {
-		auth, err := authn.New(IT.Clientset, []string{})
+		auth, err := authentication.New(IT.Clientset, []string{})
 		Expect(err).NotTo(HaveOccurred())
 
 		return &commonController{

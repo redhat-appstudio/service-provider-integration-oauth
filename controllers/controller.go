@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/redhat-appstudio/service-provider-integration-oauth/authn"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/authentication"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 )
 
@@ -44,7 +44,7 @@ const (
 )
 
 func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceProviderConfiguration) (Controller, error) {
-	authtor, err := authn.NewFromConfig(fullConfig)
+	authtor, err := authentication.NewFromConfig(fullConfig)
 	if err != nil {
 		return nil, err
 	}

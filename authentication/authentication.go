@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package authn
+package authentication
 
 import (
 	"time"
@@ -20,11 +20,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
-	authn "k8s.io/apiserver/pkg/authentication/authenticator"
-	authnfactory "k8s.io/apiserver/pkg/authentication/authenticatorfactory"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
 )
 
-func NewFromConfig(cfg config.Configuration) (authn.Request, error) {
+func NewFromConfig(cfg config.Configuration) (authenticator.Request, error) {
 	cl, err := cfg.KubernetesClientset()
 	if err != nil {
 		return nil, err
@@ -33,8 +33,8 @@ func NewFromConfig(cfg config.Configuration) (authn.Request, error) {
 	return New(cl, cfg.KubernetesAuthAudiences)
 }
 
-func New(client *kubernetes.Clientset, audiences []string) (authn.Request, error) {
-	authConfig := authnfactory.DelegatingAuthenticatorConfig{
+func New(client *kubernetes.Clientset, audiences []string) (authenticator.Request, error) {
+	authConfig := authenticatorfactory.DelegatingAuthenticatorConfig{
 		Anonymous:                false,
 		TokenAccessReviewClient:  client.AuthenticationV1(),
 		TokenAccessReviewTimeout: 0,

@@ -178,7 +178,8 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 
 	code := r.FormValue("code")
 
-	token, err := oauthCfg.Exchange(ctx, code)
+	scopeOption := oauth2.SetAuthURLParam("scope", r.FormValue("scope"))
+	token, err := oauthCfg.Exchange(ctx, code, scopeOption)
 	if err != nil {
 		return nil, nil, oauthFinishError, err
 	}

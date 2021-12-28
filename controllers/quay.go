@@ -30,7 +30,7 @@ const quayUserAPI = "https://quay.io/api/v1/user"
 // quayEndpoint is the OAuth endpoints specification of quay.io
 var quayEndpoint = oauth2.Endpoint{
 	AuthURL:  "https://quay.io/oauth/authorize",
-	TokenURL: "https://quay.io/oauth/token",
+	TokenURL: "https://quay.io/oauth/access_token",
 }
 
 // retrieveQuayUserDetails reads the user details from the Quay API. Note that Quay doesn't really have a notion

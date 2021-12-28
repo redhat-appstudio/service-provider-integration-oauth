@@ -178,6 +178,8 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 
 	code := r.FormValue("code")
 
+	// adding scopes to code exchange request is little out of spec, but quay wants them,
+	// while other providers will just ignore this parameter
 	scopeOption := oauth2.SetAuthURLParam("scope", r.FormValue("scope"))
 	token, err := oauthCfg.Exchange(ctx, code, scopeOption)
 	if err != nil {

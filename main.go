@@ -20,6 +20,9 @@ import (
 	"os"
 	"strings"
 
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+
 	"github.com/alexflint/go-arg"
 
 	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
@@ -33,6 +36,7 @@ type cliArgs struct {
 	ConfigFile string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
 	Port       int    `arg:"-p, --port, env" default:"8000" help:"The port to listen on"`
 	DevMode    bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
+	KubeConfig string `arg:"-k, --kubeconfig, env" default:"" help:""`
 }
 
 func OkHandler(w http.ResponseWriter, _ *http.Request) {
@@ -52,26 +56,26 @@ func main() {
 		zap.ReplaceGlobals(logger)
 	}
 
-	pcfg, err := config.LoadFrom(args.ConfigFile)
-	if err != nil {
-		zap.L().Error("failed to load configuration", zap.Error(err))
-		os.Exit(1)
-	}
-
-	cfg, err := pcfg.Inflate()
+	cfg, err := config.Config(args.ConfigFile)
 	if err != nil {
 		zap.L().Error("failed to initialize the configuration", zap.Error(err))
 		os.Exit(1)
 	}
 
-	start(cfg, args.Port)
+	kubeConfig, err := kubernetesConfig(args.KubeConfig)
+	if err != nil {
+		zap.L().Error("failed to create kubernetes configuration", zap.Error(err))
+		os.Exit(1)
+	}
+
+	start(cfg, args.Port, kubeConfig)
 }
 
-func start(cfg config.Configuration, port int) {
+func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
 	router := mux.NewRouter()
 
 	for _, sp := range cfg.ServiceProviders {
-		controller, err := controllers.FromConfiguration(cfg, sp)
+		controller, err := controllers.FromConfiguration(cfg, sp, kubeConfig)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}
@@ -89,5 +93,13 @@ func start(cfg config.Configuration, port int) {
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 	if err != nil {
 		zap.L().Error("failed to start the HTTP server", zap.Error(err))
+	}
+}
+
+func kubernetesConfig(kubeConfig string) (*rest.Config, error) {
+	if kubeConfig == "" {
+		return rest.InClusterConfig()
+	} else {
+		return clientcmd.BuildConfigFromFlags("", kubeConfig)
 	}
 }

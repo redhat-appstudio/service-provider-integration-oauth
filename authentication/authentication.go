@@ -16,6 +16,8 @@ package authentication
 import (
 	"time"
 
+	"k8s.io/client-go/rest"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
@@ -24,8 +26,8 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticatorfactory"
 )
 
-func NewFromConfig(cfg config.Configuration) (authenticator.Request, error) {
-	cl, err := cfg.KubernetesClientset()
+func NewFromConfig(cfg config.Configuration, kubeConfig *rest.Config) (authenticator.Request, error) {
+	cl, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, err
 	}

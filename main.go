@@ -56,7 +56,7 @@ func main() {
 		zap.ReplaceGlobals(logger)
 	}
 
-	cfg, err := config.Config(args.ConfigFile)
+	cfg, err := config.LoadFrom(args.ConfigFile)
 	if err != nil {
 		zap.L().Error("failed to initialize the configuration", zap.Error(err))
 		os.Exit(1)

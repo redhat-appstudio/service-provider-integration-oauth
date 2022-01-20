@@ -1,7 +1,11 @@
 # This configuration is shared between the OAuth Service and the SPI operator
 
+sharedSecret: <SHARED_SECRET_VALUE>
 serviceProviders:
-- type: GitHub
-  clientId: "38eadf05310178513aed"
-  clientSecret: "1f73dd86638b9bc09f6e7b364d6f9bbad949cdaa"
-  redirectUrl: https://localhost:8080/github/callback
+  - type: GitHub
+    clientId: "123"
+    clientSecret: "42"
+  - type: Quay
+    clientId: "456"
+    clientSecret: "54"
+baseUrl: http://<OAUTH_HOST_VALUE>

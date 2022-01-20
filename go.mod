@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
-	github.com/redhat-appstudio/service-provider-integration-operator v0.2.0
+	github.com/redhat-appstudio/service-provider-integration-operator v0.2.1-0.20220120153733-c36682a4fd7d
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect

@@ -72,26 +72,31 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// needs to be obtained before AuthenticateRequest call that removes it from the request!
-	authorizationHeader := r.Header.Get("Authorization")
+	// TODO we're not checking the user authorization as of now. We need to review the whole security model first.
+	identity := user.DefaultInfo{}
+	authorizationHeader := ""
+	//
+	//// needs to be obtained before AuthenticateRequest call that removes it from the request!
+	//authorizationHeader = r.Header.Get("Authorization")
+	//
+	//authResponse, result, err := c.Authenticator.AuthenticateRequest(r)
+	//if err != nil {
+	//	logAndWriteResponse(w, http.StatusUnauthorized, "failed to authenticate the request in Kubernetes", err)
+	//	return
+	//}
+	//if !result {
+	//	w.WriteHeader(http.StatusUnauthorized)
+	//	_, _ = fmt.Fprintf(w, "failed to authenticate the request in Kubernetes")
+	//	return
+	//}
+	//
+	//identity = user.DefaultInfo{
+	//	Name:   authResponse.User.GetName(),
+	//	UID:    authResponse.User.GetUID(),
+	//	Groups: authResponse.User.GetGroups(),
+	//	Extra:  authResponse.User.GetExtra(),
+	//}
 
-	authResponse, result, err := c.Authenticator.AuthenticateRequest(r)
-	if err != nil {
-		logAndWriteResponse(w, http.StatusUnauthorized, "failed to authenticate the request in Kubernetes", err)
-		return
-	}
-	if !result {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = fmt.Fprintf(w, "failed to authenticate the request in Kubernetes")
-		return
-	}
-
-	identity := user.DefaultInfo{
-		Name:   authResponse.User.GetName(),
-		UID:    authResponse.User.GetUID(),
-		Groups: authResponse.User.GetGroups(),
-		Extra:  authResponse.User.GetExtra(),
-	}
 	authedState := oauthstate.AuthenticatedOAuthState{
 		AnonymousOAuthState: state,
 		KubernetesIdentity:  identity,
@@ -157,20 +162,21 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 		return nil, nil, oauthFinishError, err
 	}
 
-	r.Header.Set("Authorization", state.AuthorizationHeader)
-
-	authResponse, _, err := c.Authenticator.AuthenticateRequest(r)
-	if err != nil {
-		return nil, nil, oauthFinishError, err
-	}
-
-	if state.KubernetesIdentity.Name != authResponse.User.GetName() ||
-		!equalMapOfSlicesUnordered(state.KubernetesIdentity.Extra, authResponse.User.GetExtra()) ||
-		state.KubernetesIdentity.UID != authResponse.User.GetUID() ||
-		!equalSliceUnOrdered(state.KubernetesIdentity.Groups, authResponse.User.GetGroups()) {
-
-		return nil, nil, oauthFinishK8sAuthRequired, fmt.Errorf("kubernetes identity doesn't match after completing the OAuth flow")
-	}
+	// TODO we're not checking the user authorization as of now. We need to review the whole security model first.
+	//r.Header.Set("Authorization", state.AuthorizationHeader)
+	//
+	//authResponse, _, err := c.Authenticator.AuthenticateRequest(r)
+	//if err != nil {
+	//	return nil, nil, oauthFinishError, err
+	//}
+	//
+	//if state.KubernetesIdentity.Name != authResponse.User.GetName() ||
+	//	!equalMapOfSlicesUnordered(state.KubernetesIdentity.Extra, authResponse.User.GetExtra()) ||
+	//	state.KubernetesIdentity.UID != authResponse.User.GetUID() ||
+	//	!equalSliceUnOrdered(state.KubernetesIdentity.Groups, authResponse.User.GetGroups()) {
+	//
+	//	return nil, nil, oauthFinishK8sAuthRequired, fmt.Errorf("kubernetes identity doesn't match after completing the OAuth flow")
+	//}
 
 	// the state is ok, let's retrieve the token from the service provider
 	oauthCfg := c.newOAuth2Config()
@@ -190,8 +196,9 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 
 // syncTokenData stores the data of the token to the configured TokenStorage.
 func (c commonController) syncTokenData(ctx context.Context, token *oauth2.Token, state *oauthstate.AuthenticatedOAuthState, metadata *v1beta1.TokenMetadata) error {
+	// TODO if we decide to use the kubernetes identity of the user that initiated the OAuth flow, we need to use a
+	// different kubernetes client to do the creation/update here...
 	accessToken := &v1beta1.SPIAccessToken{}
-
 	if err := c.K8sClient.Get(ctx, client.ObjectKey{Name: state.TokenName, Namespace: state.TokenNamespace}, accessToken); err != nil {
 		return err
 	}

@@ -231,34 +231,36 @@ func logAndWriteResponse(w http.ResponseWriter, status int, msg string, err erro
 	zap.L().Error(msg, zap.Error(err))
 }
 
-func equalMapOfSlicesUnordered(a map[string][]string, b map[string][]string) bool {
-	for k, v := range a {
-		if !equalSliceUnOrdered(v, b[k]) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func equalSliceUnOrdered(as []string, bs []string) bool {
-	if len(as) != len(bs) {
-		return false
-	}
-
-as:
-	for _, a := range as {
-		for _, b := range bs {
-			if a == b {
-				continue as
-			}
-		}
-
-		return false
-	}
-
-	return true
-}
+// TODO we're not checking the user authorization as of now. We need to review the whole security model first.
+// These functions were only needed in the authorization checking code.
+//func equalMapOfSlicesUnordered(a map[string][]string, b map[string][]string) bool {
+//	for k, v := range a {
+//		if !equalSliceUnOrdered(v, b[k]) {
+//			return false
+//		}
+//	}
+//
+//	return true
+//}
+//
+//func equalSliceUnOrdered(as []string, bs []string) bool {
+//	if len(as) != len(bs) {
+//		return false
+//	}
+//
+//as:
+//	for _, a := range as {
+//		for _, b := range bs {
+//			if a == b {
+//				continue as
+//			}
+//		}
+//
+//		return false
+//	}
+//
+//	return true
+//}
 
 // getOauth2HttpClient tries to find the HTTP client used by the OAuth2 library in the context.
 // This is useful mainly in tests where we can use mocked responses even for our own calls.

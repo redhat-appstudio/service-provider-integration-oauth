@@ -198,7 +198,6 @@ var _ = Describe("Controller", func() {
 
 			g.Callback(ctx, res, req)
 
-			Expect(res.Body).To(Equal("???"))
 			Expect(res.Code).To(Equal(http.StatusFound))
 			Expect(serviceProviderReached).To(BeTrue())
 		})
@@ -242,6 +241,7 @@ var _ = Describe("Controller", func() {
 
 			g.Callback(ctx, res, req)
 
+			Expect(res.Body.String()).To(Equal("???"))
 			Expect(res.Code).To(Equal(http.StatusFound))
 			Expect(res.Result().Header.Get("Location")).To(Equal("https://redirect.to?foo=bar"))
 			Expect(serviceProviderReached).To(BeTrue())

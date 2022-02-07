@@ -154,9 +154,11 @@ var _ = Describe("Controller", func() {
 		})
 
 		AfterEach(func() {
+			fmt.Print("Cleanup started")
 			t := &v1beta1.SPIAccessToken{}
 			Expect(IT.Client.Get(IT.Context, client.ObjectKey{Name: "mytoken", Namespace: IT.Namespace}, t)).To(Succeed())
 			Expect(IT.Client.Delete(IT.Context, t)).To(Succeed())
+			fmt.Print("Cleanup finished")
 		})
 
 		It("exchanges the code for token", func() {
@@ -202,45 +204,45 @@ var _ = Describe("Controller", func() {
 			Expect(serviceProviderReached).To(BeTrue())
 		})
 
-		//It("redirects to specified url", func() {
-		//	g, res := authenticateFlow()
-		//
-		//	// grab the encoded state
-		//	redirect, err := url.Parse(res.Header().Get("Location"))
-		//	Expect(err).NotTo(HaveOccurred())
-		//	state := redirect.Query().Get("state")
-		//
-		//	// simulate github redirecting back to our callback endpoint...
-		//	req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s&code=123&redirect_after_login=https://redirect.to?foo=bar", state), nil)
-		//	res = httptest.NewRecorder()
-		//
-		//	// The callback handler will be reaching out to github to exchange the code for the token.. let's fake that
-		//	// response...
-		//	bakedResponse, _ := json.Marshal(oauth2.Token{
-		//		AccessToken:  "token",
-		//		TokenType:    "jwt",
-		//		RefreshToken: "refresh",
-		//		Expiry:       time.Now(),
-		//	})
-		//	ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
-		//		Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
-		//			if strings.HasPrefix(r.URL.String(), "https://special.sp") {
-		//				return &http.Response{
-		//					StatusCode: 200,
-		//					Header:     http.Header{},
-		//					Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
-		//					Request:    r,
-		//				}, nil
-		//			}
-		//
-		//			return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
-		//		}),
-		//	})
-		//
-		//	g.Callback(ctx, res, req)
-		//
-		//	Expect(res.Code).To(Equal(http.StatusFound))
-		//	Expect(res.Result().Header.Get("Location")).To(Equal("https://redirect.to?foo=bar"))
-		//})
+		It("redirects to specified url", func() {
+			g, res := authenticateFlow()
+
+			// grab the encoded state
+			redirect, err := url.Parse(res.Header().Get("Location"))
+			Expect(err).NotTo(HaveOccurred())
+			state := redirect.Query().Get("state")
+
+			// simulate github redirecting back to our callback endpoint...
+			req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s&code=123&redirect_after_login=https://redirect.to?foo=bar", state), nil)
+			res = httptest.NewRecorder()
+
+			// The callback handler will be reaching out to github to exchange the code for the token.. let's fake that
+			// response...
+			bakedResponse, _ := json.Marshal(oauth2.Token{
+				AccessToken:  "token",
+				TokenType:    "jwt",
+				RefreshToken: "refresh",
+				Expiry:       time.Now(),
+			})
+			ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
+				Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
+					if strings.HasPrefix(r.URL.String(), "https://special.sp") {
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{},
+							Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
+							Request:    r,
+						}, nil
+					}
+
+					return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
+				}),
+			})
+
+			g.Callback(ctx, res, req)
+
+			Expect(res.Code).To(Equal(http.StatusFound))
+			Expect(res.Result().Header.Get("Location")).To(Equal("https://redirect.to?foo=bar"))
+		})
 	})
 })

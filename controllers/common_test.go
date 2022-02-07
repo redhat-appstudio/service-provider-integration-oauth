@@ -198,7 +198,7 @@ var _ = Describe("Controller", func() {
 
 			g.Callback(ctx, res, req)
 
-			Expect(res.Code).To(Equal(http.StatusOK))
+			Expect(res.Code).To(Equal(http.StatusFound))
 			Expect(serviceProviderReached).To(BeTrue())
 		})
 	})

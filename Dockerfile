@@ -8,6 +8,7 @@ WORKDIR /spi-oauth
 COPY go.mod go.mod
 COPY go.sum go.sum
 COPY static/callback_success.html static/callback_success.html
+COPY static/callback_error.html static/callback_error.html
 
 # Copy the go sources
 COPY main.go main.go
@@ -24,6 +25,7 @@ FROM registry.access.redhat.com/ubi8-minimal:8.4-212
 
 COPY --from=builder /spi-oauth/spi-oauth /spi-oauth
 COPY --from=builder /spi-oauth/static/callback_success.html /static/callback_success.html
+COPY --from=builder /spi-oauth/static/callback_error.html /static/callback_error.html
 
 WORKDIR /
 USER 65532:65532

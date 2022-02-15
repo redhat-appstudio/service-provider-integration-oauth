@@ -144,7 +144,7 @@ func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r
 
 	redirectLocation := r.FormValue("redirect_after_login")
 	if redirectLocation == "" {
-		redirectLocation = strings.TrimSuffix(c.BaseUrl, "/") + "/" + "callback_success.html"
+		redirectLocation = strings.TrimSuffix(c.BaseUrl, "/") + "/" + "callback_success"
 	}
 	http.Redirect(w, r, redirectLocation, http.StatusFound)
 

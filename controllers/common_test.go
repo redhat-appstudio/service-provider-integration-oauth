@@ -151,14 +151,20 @@ var _ = Describe("Controller", func() {
 					ServiceProviderUrl:  "https://special.sp",
 				},
 			})).To(Succeed())
-			time.Sleep(500 * time.Millisecond) //to let the actual creation happen
+
+			t := &v1beta1.SPIAccessToken{}
+			Eventually(func() error {
+				return IT.Client.Get(IT.Context, client.ObjectKey{Name: "mytoken", Namespace: IT.Namespace}, t)
+			}).WithTimeout(500 * time.Millisecond).Should(Succeed())
 		})
 
 		AfterEach(func() {
 			t := &v1beta1.SPIAccessToken{}
 			Expect(IT.Client.Get(IT.Context, client.ObjectKey{Name: "mytoken", Namespace: IT.Namespace}, t)).To(Succeed())
 			Expect(IT.Client.Delete(IT.Context, t)).To(Succeed())
-			time.Sleep(500 * time.Millisecond) //to let the actual deletion happen
+			Eventually(func() error {
+				return IT.Client.Get(IT.Context, client.ObjectKey{Name: "mytoken", Namespace: IT.Namespace}, t)
+			}).WithTimeout(500 * time.Millisecond).ShouldNot(Succeed())
 		})
 
 		It("exchanges the code for token", func() {

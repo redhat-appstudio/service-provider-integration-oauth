@@ -62,10 +62,13 @@ func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, _ := template.ParseFiles("static/callback_error.html")
 
-	w.WriteHeader(http.StatusOK)
 	err := tmpl.Execute(w, data)
-	if err != nil {
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	} else {
 		zap.L().Error("failed to process template: %s", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(fmt.Sprintf("Error response returned to OAuth callback: %s. Message: %s ", errorMsg, errorDescription)))
 	}
 
 }

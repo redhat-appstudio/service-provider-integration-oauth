@@ -33,14 +33,13 @@ import (
 // commonController is the implementation of the Controller interface that assumes typical OAuth flow. It can be adapted
 // to various service providers by supplying a SP-specific RetrieveUserMetadata function.
 type commonController struct {
-	Config               config.ServiceProviderConfiguration
-	JwtSigningSecret     []byte
-	Authenticator        authenticator.Request
-	K8sClient            client.Client
-	TokenStorage         tokenstorage.TokenStorage
-	Endpoint             oauth2.Endpoint
-	BaseUrl              string
-	RetrieveUserMetadata func(cl *http.Client, token *oauth2.Token) (*v1beta1.TokenMetadata, error)
+	Config           config.ServiceProviderConfiguration
+	JwtSigningSecret []byte
+	Authenticator    authenticator.Request
+	K8sClient        client.Client
+	TokenStorage     tokenstorage.TokenStorage
+	Endpoint         oauth2.Endpoint
+	BaseUrl          string
 }
 
 // newOAuth2Config returns a new instance of the oauth2.Config struct with the clientId, clientSecret and redirect URL
@@ -130,13 +129,7 @@ func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	metadata, err := c.RetrieveUserMetadata(getOauth2HttpClient(ctx), token)
-	if err != nil {
-		logAndWriteResponse(w, http.StatusInternalServerError, "failed to get Service Provider user", err)
-		return
-	}
-
-	err = c.syncTokenData(ctx, token, state, metadata)
+	err = c.syncTokenData(ctx, token, state)
 	if err != nil {
 		logAndWriteResponse(w, http.StatusInternalServerError, "failed to store token data to cluster", err)
 		return
@@ -200,7 +193,7 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 }
 
 // syncTokenData stores the data of the token to the configured TokenStorage.
-func (c commonController) syncTokenData(ctx context.Context, token *oauth2.Token, state *oauthstate.AuthenticatedOAuthState, metadata *v1beta1.TokenMetadata) error {
+func (c commonController) syncTokenData(ctx context.Context, token *oauth2.Token, state *oauthstate.AuthenticatedOAuthState) error {
 	// TODO if we decide to use the kubernetes identity of the user that initiated the OAuth flow, we need to use a
 	// different kubernetes client to do the creation/update here...
 	accessToken := &v1beta1.SPIAccessToken{}
@@ -221,7 +214,6 @@ func (c commonController) syncTokenData(ctx context.Context, token *oauth2.Token
 	}
 
 	accessToken.Spec.DataLocation = loc
-	accessToken.Spec.TokenMetadata = metadata
 
 	if err = c.K8sClient.Update(ctx, accessToken); err != nil {
 		return err
@@ -234,46 +226,4 @@ func logAndWriteResponse(w http.ResponseWriter, status int, msg string, err erro
 	w.WriteHeader(status)
 	_, _ = fmt.Fprintf(w, msg+": ", err.Error())
 	zap.L().Error(msg, zap.Error(err))
-}
-
-// TODO we're not checking the user authorization as of now. We need to review the whole security model first.
-// These functions were only needed in the authorization checking code.
-//func equalMapOfSlicesUnordered(a map[string][]string, b map[string][]string) bool {
-//	for k, v := range a {
-//		if !equalSliceUnOrdered(v, b[k]) {
-//			return false
-//		}
-//	}
-//
-//	return true
-//}
-//
-//func equalSliceUnOrdered(as []string, bs []string) bool {
-//	if len(as) != len(bs) {
-//		return false
-//	}
-//
-//as:
-//	for _, a := range as {
-//		for _, b := range bs {
-//			if a == b {
-//				continue as
-//			}
-//		}
-//
-//		return false
-//	}
-//
-//	return true
-//}
-
-// getOauth2HttpClient tries to find the HTTP client used by the OAuth2 library in the context.
-// This is useful mainly in tests where we can use mocked responses even for our own calls.
-func getOauth2HttpClient(ctx context.Context) *http.Client {
-	cl, _ := ctx.Value(oauth2.HTTPClient).(*http.Client)
-	if cl != nil {
-		return cl
-	}
-
-	return &http.Client{}
 }

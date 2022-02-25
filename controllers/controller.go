@@ -81,27 +81,23 @@ func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceP
 	}
 
 	var endpoint oauth2.Endpoint
-	var userDetails func(*http.Client, *oauth2.Token) (*v1beta1.TokenMetadata, error)
 
 	switch spConfig.ServiceProviderType {
 	case config.ServiceProviderTypeGitHub:
 		endpoint = github.Endpoint
-		userDetails = retrieveGitHubUserDetails
 	case config.ServiceProviderTypeQuay:
 		endpoint = quayEndpoint
-		userDetails = retrieveQuayUserDetails
 	default:
 		return nil, fmt.Errorf("not implemented yet")
 	}
 
 	return &commonController{
-		Config:               spConfig,
-		JwtSigningSecret:     fullConfig.SharedSecret,
-		Authenticator:        authtor,
-		K8sClient:            cl,
-		TokenStorage:         ts,
-		Endpoint:             endpoint,
-		BaseUrl:              fullConfig.BaseUrl,
-		RetrieveUserMetadata: userDetails,
+		Config:           spConfig,
+		JwtSigningSecret: fullConfig.SharedSecret,
+		Authenticator:    authtor,
+		K8sClient:        cl,
+		TokenStorage:     ts,
+		Endpoint:         endpoint,
+		BaseUrl:          fullConfig.BaseUrl,
 	}, nil
 }

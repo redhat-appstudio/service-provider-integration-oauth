@@ -75,6 +75,6 @@ func retrieveQuayUserDetails(client *http.Client, token *oauth2.Token) (*v1beta1
 	}
 
 	return &v1beta1.TokenMetadata{
-		UserName: username,
+		Username: username,
 	}, nil
 }

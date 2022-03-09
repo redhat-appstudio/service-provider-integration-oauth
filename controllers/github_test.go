@@ -64,5 +64,5 @@ func TestTokenSentWhenRetrievingGitHubUserDetails(t *testing.T) {
 	assert.True(t, githubReached)
 	assert.True(t, authorizationSet)
 	assert.Equal(t, "123", metadata.UserId)
-	assert.Equal(t, "mylogin", metadata.UserName)
+	assert.Equal(t, "mylogin", metadata.Username)
 }

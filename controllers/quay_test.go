@@ -62,5 +62,5 @@ func TestTokenSentWhenRetrievingQuayUserDetails(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, githubReached)
 	assert.True(t, authorizationSet)
-	assert.Equal(t, "mylogin", metadata.UserName)
+	assert.Equal(t, "mylogin", metadata.Username)
 }

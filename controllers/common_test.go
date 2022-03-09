@@ -100,7 +100,7 @@ var _ = Describe("Controller", func() {
 			RetrieveUserMetadata: func(cl *http.Client, token *oauth2.Token) (*v1beta1.TokenMetadata, error) {
 				return &v1beta1.TokenMetadata{
 					UserId:   "123",
-					UserName: "john-doe",
+					Username: "john-doe",
 				}, nil
 			},
 			BaseUrl: "https://spi.on.my.machine",

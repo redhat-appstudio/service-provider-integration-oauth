@@ -75,6 +75,6 @@ func retrieveGitHubUserDetails(client *http.Client, token *oauth2.Token) (*v1bet
 
 	return &v1beta1.TokenMetadata{
 		UserId:   userId,
-		UserName: userName,
+		Username: userName,
 	}, nil
 }

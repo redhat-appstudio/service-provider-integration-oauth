@@ -221,7 +221,7 @@ func (c commonController) syncTokenData(ctx context.Context, token *oauth2.Token
 	}
 
 	accessToken.Spec.DataLocation = loc
-	accessToken.Spec.TokenMetadata = metadata
+	accessToken.Status.TokenMetadata = metadata
 
 	if err = c.K8sClient.Update(ctx, accessToken); err != nil {
 		return err

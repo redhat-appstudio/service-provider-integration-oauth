@@ -17,6 +17,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/vault/vault"
+
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"k8s.io/client-go/kubernetes"
@@ -35,14 +37,15 @@ import (
 )
 
 var IT = struct {
-	TestEnvironment *envtest.Environment
-	Context         context.Context
-	Cancel          context.CancelFunc
-	Scheme          *runtime.Scheme
-	Namespace       string
-	Client          client.Client
-	Clientset       *kubernetes.Clientset
-	TokenStorage    tokenstorage.TokenStorage
+	TestEnvironment  *envtest.Environment
+	Context          context.Context
+	Cancel           context.CancelFunc
+	Scheme           *runtime.Scheme
+	Namespace        string
+	Client           client.Client
+	Clientset        *kubernetes.Clientset
+	TokenStorage     tokenstorage.TokenStorage
+	VaultTestCluster *vault.TestCluster
 }{}
 
 func TestSuite(t *testing.T) {
@@ -95,7 +98,7 @@ var _ = BeforeSuite(func() {
 	IT.Clientset, err = kubernetes.NewForConfig(IT.TestEnvironment.Config)
 	Expect(err).NotTo(HaveOccurred())
 
-	IT.TokenStorage, err = tokenstorage.New(IT.Client)
+	IT.VaultTestCluster, IT.TokenStorage = tokenstorage.CreateTestVaultTokenStorage(&testing.T{})
 	Expect(err).NotTo(HaveOccurred())
 
 	ns := &corev1.Namespace{
@@ -153,4 +156,5 @@ var _ = AfterSuite(func() {
 	Expect(IT.Client.Delete(context.TODO(), ns)).To(Succeed())
 	IT.Cancel()
 	Expect(IT.TestEnvironment.Stop()).To(Succeed())
+	IT.VaultTestCluster.Cleanup()
 })

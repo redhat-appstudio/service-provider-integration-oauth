@@ -147,8 +147,7 @@ var _ = Describe("Controller", func() {
 					Namespace: IT.Namespace,
 				},
 				Spec: v1beta1.SPIAccessTokenSpec{
-					ServiceProviderType: "My_Special_SP",
-					ServiceProviderUrl:  "https://special.sp",
+					ServiceProviderUrl: "https://special.sp",
 				},
 			})).To(Succeed())
 

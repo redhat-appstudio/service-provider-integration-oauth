@@ -215,12 +215,11 @@ func (c commonController) syncTokenData(ctx context.Context, token *oauth2.Token
 		Expiry:       uint64(token.Expiry.Unix()),
 	}
 
-	loc, err := c.TokenStorage.Store(ctx, accessToken, &apiToken)
+	err := c.TokenStorage.Store(ctx, accessToken, &apiToken)
 	if err != nil {
 		return err
 	}
 
-	accessToken.Spec.DataLocation = loc
 	accessToken.Status.TokenMetadata = metadata
 
 	if err = c.K8sClient.Update(ctx, accessToken); err != nil {

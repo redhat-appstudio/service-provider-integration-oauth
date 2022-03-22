@@ -2,7 +2,7 @@ module github.com/redhat-appstudio/service-provider-integration-oauth
 
 go 1.17
 
-replace github.com/redhat-appstudio/service-provider-integration-operator v0.2.3 => github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220310114847-1dac98249ed4
+replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220322150915-0339a87a5b1c
 
 require (
 	github.com/alexflint/go-arg v1.4.2
@@ -41,6 +41,7 @@ require (
 	github.com/Masterminds/goutils v1.1.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
+	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
@@ -62,7 +63,6 @@ require (
 	github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba // indirect
 	github.com/digitalocean/godo v1.7.5 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
-	github.com/dnaeon/go-vcr v1.2.0 // indirect
 	github.com/evanphx/json-patch v4.11.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
@@ -90,7 +90,6 @@ require (
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/gophercloud/gophercloud v0.1.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
-	github.com/hashicorp/consul/sdk v0.8.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-discover v0.0.0-20210818145131-c573d69da192 // indirect
@@ -122,13 +121,14 @@ require (
 	github.com/hashicorp/raft-autopilot v0.1.3 // indirect
 	github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210421194847-a7e34179d62c // indirect
 	github.com/hashicorp/raft-snapshot v1.0.3 // indirect
+	github.com/hashicorp/vault-plugin-secrets-kv v0.10.1 // indirect
 	github.com/hashicorp/vault/api v1.3.1 // indirect
+	github.com/hashicorp/vault/api/auth/kubernetes v0.1.0 // indirect
 	github.com/hashicorp/vault/sdk v0.3.1-0.20220224202448-00c495209246 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hashicorp/yamux v0.0.0-20211028200310-0bc27b27de87 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/jarcoal/httpmock v1.0.7 // indirect
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f // indirect
 	github.com/jefferai/jsonx v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -197,7 +197,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220207234003-57398862261d // indirect
+	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
@@ -206,7 +206,6 @@ require (
 	google.golang.org/genproto v0.0.0-20220207185906-7721543eae58 // indirect
 	google.golang.org/grpc v1.44.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/resty.v1 v1.12.0 // indirect

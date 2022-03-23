@@ -75,7 +75,7 @@ func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceP
 		return nil, err
 	}
 
-	ts, err := tokenstorage.NewVaultStorage("spi-oauth", fullConfig.VaultHost, fullConfig.ServiceAccountTokenFilePath)
+	ts, err := tokenstorage.NewVaultStorage(cl, "spi-oauth", fullConfig.VaultHost, fullConfig.ServiceAccountTokenFilePath)
 	if err != nil {
 		return nil, err
 	}

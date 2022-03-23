@@ -1499,8 +1499,8 @@ github.com/softlayer/softlayer-go v0.0.0-20180806151055-260589d94c7d/go.mod h1:C
 github.com/soheilhy/cmux v0.1.4/go.mod h1:IM3LyeVVIOuxMH7sFAkER9+bJ4dT7Ms6E4xg4kGIyLM=
 github.com/soheilhy/cmux v0.1.5/go.mod h1:T7TcVDs9LWfQgPlPsdngu6I6QIoyIFZDDC6sNE1GqG0=
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
-github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220322150915-0339a87a5b1c h1:v7u1mp8dLCvSvphA0PQRmwXgZAPyvZrTbBmgY55MHoc=
-github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220322150915-0339a87a5b1c/go.mod h1:R1JuoTpyXwDg4aE1Wt+/GgQlFUdWGMO00RgBGMZUdv0=
+github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220323125340-37e5d0d98112 h1:rZQW3erM+RRL99Ig9QGpXjimqG2fszv689jXLyNdiUk=
+github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220323125340-37e5d0d98112/go.mod h1:R1JuoTpyXwDg4aE1Wt+/GgQlFUdWGMO00RgBGMZUdv0=
 github.com/spf13/afero v1.1.2/go.mod h1:j4pytiNVoe2o6bmDsKpLACNPDBIoEAkihy7loJ1B0CQ=
 github.com/spf13/afero v1.2.1/go.mod h1:9ZxEEn6pIJ8Rxe320qSDBk6AsU0r9pR7Q4OcevTdifk=
 github.com/spf13/afero v1.2.2 h1:5jhuqJyZCZf2JRofRvN/nIFgIWNzPa3/Vz8mYylgbWc=

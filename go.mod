@@ -2,7 +2,7 @@ module github.com/redhat-appstudio/service-provider-integration-oauth
 
 go 1.17
 
-replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220324103028-05b58b9c1fb3
+replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220324132156-5a908e39c48b
 
 require (
 	github.com/alexflint/go-arg v1.4.2

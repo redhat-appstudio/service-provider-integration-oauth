@@ -98,7 +98,7 @@ var _ = BeforeSuite(func() {
 	IT.Clientset, err = kubernetes.NewForConfig(IT.TestEnvironment.Config)
 	Expect(err).NotTo(HaveOccurred())
 
-	IT.VaultTestCluster, IT.TokenStorage = tokenstorage.CreateTestVaultTokenStorage(&testing.T{})
+	IT.VaultTestCluster, IT.TokenStorage = tokenstorage.CreateTestVaultTokenStorage(GinkgoT())
 	Expect(err).NotTo(HaveOccurred())
 
 	ns := &corev1.Namespace{

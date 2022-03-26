@@ -2,8 +2,6 @@ module github.com/redhat-appstudio/service-provider-integration-oauth
 
 go 1.17
 
-replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/sparkoo/service-provider-integration-operator v0.2.2-0.20220324132156-5a908e39c48b
-
 require (
 	github.com/alexflint/go-arg v1.4.2
 	github.com/go-jose/go-jose/v3 v3.0.0
@@ -11,7 +9,7 @@ require (
 	github.com/hashicorp/vault v1.9.4
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
-	github.com/redhat-appstudio/service-provider-integration-operator v0.2.4-0.20220310071520-c72cd65db66f
+	github.com/redhat-appstudio/service-provider-integration-operator v0.2.4-0.20220326105419-fbff599c61ee
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8

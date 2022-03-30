@@ -245,14 +245,3 @@ func logAndWriteResponse(w http.ResponseWriter, status int, msg string, err erro
 //
 //	return true
 //}
-
-// getOauth2HttpClient tries to find the HTTP client used by the OAuth2 library in the context.
-// This is useful mainly in tests where we can use mocked responses even for our own calls.
-func getOauth2HttpClient(ctx context.Context) *http.Client {
-	cl, _ := ctx.Value(oauth2.HTTPClient).(*http.Client)
-	if cl != nil {
-		return cl
-	}
-
-	return &http.Client{}
-}

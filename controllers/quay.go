@@ -17,8 +17,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const quayUserAPI = "https://quay.io/api/v1/user"
-
 // quayEndpoint is the OAuth endpoints specification of quay.io
 var quayEndpoint = oauth2.Endpoint{
 	AuthURL:  "https://quay.io/oauth/authorize",

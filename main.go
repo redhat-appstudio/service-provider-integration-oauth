@@ -14,6 +14,7 @@
 package main
 
 import (
+	stderrors "errors"
 	"fmt"
 	"html/template"
 	"net"
@@ -26,6 +27,10 @@ import (
 	"github.com/alexedwards/scs"
 	"github.com/alexedwards/scs/stores/memstore"
 	certutil "k8s.io/client-go/util/cert"
+
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/alexflint/go-arg"
 	"k8s.io/client-go/rest"
@@ -82,6 +87,22 @@ func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func handleUpload(uploader *controllers.TokenUploader) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := uploader.Handle(r); err != nil {
+			if status := errors.APIStatus(nil); stderrors.As(err, &status) {
+				w.WriteHeader(int(status.Status().Code))
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			zap.L().Error("error handling token upload: %s", zap.Error(err))
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func main() {
 	args := cliArgs{}
 	arg.MustParse(&args)
@@ -127,6 +148,26 @@ func main() {
 func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
 	router := mux.NewRouter()
 
+	cl, err := controllers.CreateClient(kubeConfig, client.Options{})
+	if err != nil {
+		zap.L().Error("failed to create kubernetes client")
+		return
+	}
+
+	strg, err := tokenstorage.NewVaultStorage("spi-oauth", cfg.VaultHost, cfg.ServiceAccountTokenFilePath)
+	if err != nil {
+		zap.L().Error("failed to create token storage interface")
+		return
+	}
+
+	tokenUploader := controllers.TokenUploader{
+		K8sClient: cl,
+		Storage: tokenstorage.NotifyingTokenStorage{
+			Client:       cl,
+			TokenStorage: strg,
+		},
+	}
+
 	// the session has 15 minutes timeout and stale sessions are cleaned every 5 minutes
 	sessionManager := scs.NewManager(memstore.New(5 * time.Minute))
 	sessionManager.Name("appstudio_spi_session")
@@ -137,6 +178,7 @@ func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
 	router.HandleFunc("/ready", OkHandler).Methods("GET")
 	router.HandleFunc("/callback_success", CallbackSuccessHandler).Methods("GET")
 	router.NewRoute().Path("/{type}/callback").Queries("error", "", "error_description", "").HandlerFunc(CallbackErrorHandler)
+	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(handleUpload(&tokenUploader)).Methods("POST")
 
 	for _, sp := range cfg.ServiceProviders {
 		controller, err := controllers.FromConfiguration(cfg, sp, kubeConfig, sessionManager)
@@ -153,7 +195,7 @@ func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
 	}
 
 	zap.L().Info("Starting the server", zap.Int("port", port))
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 	if err != nil {
 		zap.L().Error("failed to start the HTTP server", zap.Error(err))
 	}

@@ -87,10 +87,16 @@ func main() {
 	loggerConfig.ErrorOutputPaths = []string{"stdout"}
 	logger, err := loggerConfig.Build()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to initialize logging: %s", err.Error())
+		// there's nothing we can do about the error to print to stderr, but the linter requires us to at least pretend
+		_, _ = fmt.Fprintf(os.Stderr, "failed to initialize logging: %s", err.Error())
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() {
+		// linter says we need to handle the error from this call, but this is called after main with no way of us doing
+		// anything about the error. So the anon func and this assignment is here purely to make the linter happy.
+		_ = logger.Sync()
+	}()
+
 	undo := zap.ReplaceGlobals(logger)
 	defer undo()
 

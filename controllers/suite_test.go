@@ -26,6 +26,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
 	auth "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +34,7 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	k8szap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var IT = struct {
@@ -54,7 +55,10 @@ func TestSuite(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	logf.SetLogger(k8szap.New(k8szap.WriteTo(GinkgoWriter), k8szap.UseDevMode(true)))
+	logger, err := zap.NewDevelopment()
+	Expect(err).NotTo(HaveOccurred())
+	zap.ReplaceGlobals(logger)
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	IT.Context = ctx

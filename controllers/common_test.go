@@ -167,87 +167,98 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("exchanges the code for token", func() {
-			g, res := authenticateFlow()
+			// this may fail at times because we're updating the token during the flow and we may intersect with
+			// operator's work. Wrapping it in an Eventually block makes sure we retry on such occurrences. Note that
+			// the need for this will disappear once we don't update the token anymore from OAuth service (which is
+			// the plan).
+			Eventually(func(g Gomega) {
+				controller, res := authenticateFlow()
 
-			// grab the encoded state
-			redirect, err := url.Parse(res.Header().Get("Location"))
-			Expect(err).NotTo(HaveOccurred())
-			state := redirect.Query().Get("state")
+				// grab the encoded state
+				redirect, err := url.Parse(res.Header().Get("Location"))
+				g.Expect(err).NotTo(HaveOccurred())
+				state := redirect.Query().Get("state")
 
-			// simulate github redirecting back to our callback endpoint...
-			req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s&code=123", state), nil)
-			res = httptest.NewRecorder()
+				// simulate github redirecting back to our callback endpoint...
+				req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s&code=123", state), nil)
+				res = httptest.NewRecorder()
 
-			// The callback handler will be reaching out to github to exchange the code for the token.. let's fake that
-			// response...
-			bakedResponse, _ := json.Marshal(oauth2.Token{
-				AccessToken:  "token",
-				TokenType:    "jwt",
-				RefreshToken: "refresh",
-				Expiry:       time.Now(),
-			})
-			serviceProviderReached := false
-			ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
-				Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
-					if strings.HasPrefix(r.URL.String(), "https://special.sp") {
-						serviceProviderReached = true
-						return &http.Response{
-							StatusCode: 200,
-							Header:     http.Header{},
-							Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
-							Request:    r,
-						}, nil
-					}
+				// The callback handler will be reaching out to github to exchange the code for the token.. let's fake that
+				// response...
+				bakedResponse, _ := json.Marshal(oauth2.Token{
+					AccessToken:  "token",
+					TokenType:    "jwt",
+					RefreshToken: "refresh",
+					Expiry:       time.Now(),
+				})
+				serviceProviderReached := false
+				ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
+					Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
+						if strings.HasPrefix(r.URL.String(), "https://special.sp") {
+							serviceProviderReached = true
+							return &http.Response{
+								StatusCode: 200,
+								Header:     http.Header{},
+								Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
+								Request:    r,
+							}, nil
+						}
 
-					return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
-				}),
-			})
+						return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
+					}),
+				})
 
-			g.Callback(ctx, res, req)
-
-			Expect(res.Code).To(Equal(http.StatusFound))
-			Expect(serviceProviderReached).To(BeTrue())
+				controller.Callback(ctx, res, req)
+				g.Expect(res.Code).To(Equal(http.StatusFound))
+				Expect(serviceProviderReached).To(BeTrue())
+			}).Should(Succeed())
 		})
 
 		It("redirects to specified url", func() {
-			g, res := authenticateFlow()
+			// this may fail at times because we're updating the token during the flow and we may intersect with
+			// operator's work. Wrapping it in an Eventually block makes sure we retry on such occurrences. Note that
+			// the need for this will disappear once we don't update the token anymore from OAuth service (which is
+			// the plan).
+			Eventually(func(g Gomega) {
+				controller, res := authenticateFlow()
 
-			// grab the encoded state
-			redirect, err := url.Parse(res.Header().Get("Location"))
-			Expect(err).NotTo(HaveOccurred())
-			state := redirect.Query().Get("state")
+				// grab the encoded state
+				redirect, err := url.Parse(res.Header().Get("Location"))
+				g.Expect(err).NotTo(HaveOccurred())
+				state := redirect.Query().Get("state")
 
-			// simulate github redirecting back to our callback endpoint...
-			req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s&code=123&redirect_after_login=https://redirect.to?foo=bar", state), nil)
-			res = httptest.NewRecorder()
+				// simulate github redirecting back to our callback endpoint...
+				req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s&code=123&redirect_after_login=https://redirect.to?foo=bar", state), nil)
+				res = httptest.NewRecorder()
 
-			// The callback handler will be reaching out to github to exchange the code for the token.. let's fake that
-			// response...
-			bakedResponse, _ := json.Marshal(oauth2.Token{
-				AccessToken:  "token",
-				TokenType:    "jwt",
-				RefreshToken: "refresh",
-				Expiry:       time.Now(),
-			})
-			ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
-				Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
-					if strings.HasPrefix(r.URL.String(), "https://special.sp") {
-						return &http.Response{
-							StatusCode: 200,
-							Header:     http.Header{},
-							Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
-							Request:    r,
-						}, nil
-					}
+				// The callback handler will be reaching out to github to exchange the code for the token.. let's fake that
+				// response...
+				bakedResponse, _ := json.Marshal(oauth2.Token{
+					AccessToken:  "token",
+					TokenType:    "jwt",
+					RefreshToken: "refresh",
+					Expiry:       time.Now(),
+				})
+				ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
+					Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
+						if strings.HasPrefix(r.URL.String(), "https://special.sp") {
+							return &http.Response{
+								StatusCode: 200,
+								Header:     http.Header{},
+								Body:       ioutil.NopCloser(bytes.NewBuffer(bakedResponse)),
+								Request:    r,
+							}, nil
+						}
 
-					return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
-				}),
-			})
+						return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
+					}),
+				})
 
-			g.Callback(ctx, res, req)
+				controller.Callback(ctx, res, req)
 
-			Expect(res.Code).To(Equal(http.StatusFound))
-			Expect(res.Result().Header.Get("Location")).To(Equal("https://redirect.to?foo=bar"))
+				g.Expect(res.Code).To(Equal(http.StatusFound))
+				g.Expect(res.Result().Header.Get("Location")).To(Equal("https://redirect.to?foo=bar"))
+			}).Should(Succeed())
 		})
 	})
 })

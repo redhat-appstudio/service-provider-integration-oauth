@@ -3,13 +3,15 @@ module github.com/redhat-appstudio/service-provider-integration-oauth
 go 1.17
 
 require (
+	github.com/alexedwards/scs v1.4.1
 	github.com/alexflint/go-arg v1.4.2
 	github.com/go-jose/go-jose/v3 v3.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/vault v1.9.4
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
-	github.com/redhat-appstudio/service-provider-integration-operator v0.4.0
+	github.com/redhat-appstudio/service-provider-integration-operator v0.4.1
+	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	k8s.io/api v0.22.4
@@ -172,7 +174,6 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/softlayer/softlayer-go v0.0.0-20180806151055-260589d94c7d // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
 	github.com/tklauser/numcpus v0.3.0 // indirect

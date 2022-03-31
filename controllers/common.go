@@ -30,7 +30,6 @@ import (
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
-	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -38,7 +37,6 @@ import (
 type commonController struct {
 	Config           config.ServiceProviderConfiguration
 	JwtSigningSecret []byte
-	Authenticator    authenticator.Request
 	K8sClient        AuthenticatingClient
 	TokenStorage     tokenstorage.TokenStorage
 	Endpoint         oauth2.Endpoint

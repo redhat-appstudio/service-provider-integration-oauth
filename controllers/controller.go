@@ -23,7 +23,6 @@ import (
 
 	"k8s.io/client-go/rest"
 
-	"github.com/redhat-appstudio/service-provider-integration-oauth/authentication"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"golang.org/x/oauth2"
@@ -54,11 +53,6 @@ const (
 // FromConfiguration is a factory function to create instances of the Controller based on the service provider
 // configuration.
 func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceProviderConfiguration, kubeConfig *rest.Config, sessionManager *scs.Manager) (Controller, error) {
-	authtor, err := authentication.NewFromConfig(fullConfig, kubeConfig)
-	if err != nil {
-		return nil, err
-	}
-
 	cl, err := CreateClient(kubeConfig, client.Options{})
 	if err != nil {
 		return nil, err
@@ -88,7 +82,6 @@ func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceP
 	return &commonController{
 		Config:           spConfig,
 		JwtSigningSecret: fullConfig.SharedSecret,
-		Authenticator:    authtor,
 		K8sClient:        cl,
 		TokenStorage:     ts,
 		Endpoint:         endpoint,

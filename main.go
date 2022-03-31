@@ -23,9 +23,12 @@ import (
 	"strings"
 	"time"
 
+	certutil "k8s.io/client-go/util/cert"
+
 	"github.com/alexedwards/scs"
 	"github.com/alexedwards/scs/stores/memstore"
-	certutil "k8s.io/client-go/util/cert"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/alexflint/go-arg"
 	"k8s.io/client-go/rest"
@@ -121,11 +124,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	start(cfg, args.Port, kubeConfig)
+	start(cfg, args.Port, kubeConfig, args.DevMode)
 }
 
-func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
+func start(cfg config.Configuration, port int, kubeConfig *rest.Config, devmode bool) {
 	router := mux.NewRouter()
+
+	if devmode {
+		kubeConfig.Insecure = true
+	}
+
+	cl, err := controllers.CreateClient(kubeConfig, client.Options{})
+	if err != nil {
+		zap.L().Error("failed to create kubernetes client", zap.Error(err))
+		return
+	}
+
+	strg, err := tokenstorage.NewVaultStorage("spi-oauth", cfg.VaultHost, cfg.ServiceAccountTokenFilePath, devmode)
+	if err != nil {
+		zap.L().Error("failed to create token storage interface", zap.Error(err))
+		return
+	}
 
 	// the session has 15 minutes timeout and stale sessions are cleaned every 5 minutes
 	sessionManager := scs.NewManager(memstore.New(5 * time.Minute))
@@ -139,7 +158,7 @@ func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
 	router.NewRoute().Path("/{type}/callback").Queries("error", "", "error_description", "").HandlerFunc(CallbackErrorHandler)
 
 	for _, sp := range cfg.ServiceProviders {
-		controller, err := controllers.FromConfiguration(cfg, sp, kubeConfig, sessionManager)
+		controller, err := controllers.FromConfiguration(cfg, sp, sessionManager, cl, strg)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}
@@ -153,7 +172,7 @@ func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
 	}
 
 	zap.L().Info("Starting the server", zap.Int("port", port))
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 	if err != nil {
 		zap.L().Error("failed to start the HTTP server", zap.Error(err))
 	}
@@ -178,11 +197,13 @@ func kubernetesConfig(args *cliArgs) (*rest.Config, error) {
 
 		tlsConfig := rest.TLSClientConfig{}
 
-		// rest.InClusterConfig is doing this most possibly only for early error handling so let's do the same
-		if _, err := certutil.NewPool(args.Api_Server_CA_Path); err != nil {
-			return nil, fmt.Errorf("expected to load root CA config from %s, but got err: %v", args.Api_Server_CA_Path, err)
-		} else {
-			tlsConfig.CAFile = args.Api_Server_CA_Path
+		if args.Api_Server_CA_Path != "" {
+			// rest.InClusterConfig is doing this most possibly only for early error handling so let's do the same
+			if _, err := certutil.NewPool(args.Api_Server_CA_Path); err != nil {
+				return nil, fmt.Errorf("expected to load root CA config from %s, but got err: %v", args.Api_Server_CA_Path, err)
+			} else {
+				tlsConfig.CAFile = args.Api_Server_CA_Path
+			}
 		}
 
 		cfg.TLSClientConfig = tlsConfig

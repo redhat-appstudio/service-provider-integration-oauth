@@ -38,7 +38,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/go-jose/go-jose/v3/json"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/authentication"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"golang.org/x/oauth2"
 )
@@ -82,9 +81,6 @@ var _ = Describe("Controller", func() {
 	}
 
 	prepareController := func() *commonController {
-		auth, err := authentication.New(IT.Clientset, []string{})
-		Expect(err).NotTo(HaveOccurred())
-
 		return &commonController{
 			Config: config.ServiceProviderConfiguration{
 				ClientId:            "clientId",
@@ -92,7 +88,6 @@ var _ = Describe("Controller", func() {
 				ServiceProviderType: config.ServiceProviderTypeGitHub,
 			},
 			JwtSigningSecret: []byte("secret"),
-			Authenticator:    auth,
 			K8sClient:        IT.Client,
 			TokenStorage:     IT.TokenStorage,
 			Endpoint: oauth2.Endpoint{

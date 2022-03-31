@@ -24,10 +24,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexedwards/scs"
-	"github.com/alexedwards/scs/stores/memstore"
 	certutil "k8s.io/client-go/util/cert"
 
+	"github.com/alexedwards/scs"
+	"github.com/alexedwards/scs/stores/memstore"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -142,21 +142,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	start(cfg, args.Port, kubeConfig)
+	start(cfg, args.Port, kubeConfig, args.DevMode)
 }
 
-func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
+func start(cfg config.Configuration, port int, kubeConfig *rest.Config, devmode bool) {
 	router := mux.NewRouter()
+
+	if devmode {
+		kubeConfig.Insecure = true
+	}
 
 	cl, err := controllers.CreateClient(kubeConfig, client.Options{})
 	if err != nil {
-		zap.L().Error("failed to create kubernetes client")
+		zap.L().Error("failed to create kubernetes client", zap.Error(err))
 		return
 	}
 
-	strg, err := tokenstorage.NewVaultStorage("spi-oauth", cfg.VaultHost, cfg.ServiceAccountTokenFilePath)
+	strg, err := tokenstorage.NewVaultStorage("spi-oauth", cfg.VaultHost, cfg.ServiceAccountTokenFilePath, devmode)
 	if err != nil {
-		zap.L().Error("failed to create token storage interface")
+		zap.L().Error("failed to create token storage interface", zap.Error(err))
 		return
 	}
 
@@ -181,7 +185,7 @@ func start(cfg config.Configuration, port int, kubeConfig *rest.Config) {
 	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(handleUpload(&tokenUploader)).Methods("POST")
 
 	for _, sp := range cfg.ServiceProviders {
-		controller, err := controllers.FromConfiguration(cfg, sp, kubeConfig, sessionManager)
+		controller, err := controllers.FromConfiguration(cfg, sp, sessionManager, cl, strg)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}
@@ -220,11 +224,13 @@ func kubernetesConfig(args *cliArgs) (*rest.Config, error) {
 
 		tlsConfig := rest.TLSClientConfig{}
 
-		// rest.InClusterConfig is doing this most possibly only for early error handling so let's do the same
-		if _, err := certutil.NewPool(args.Api_Server_CA_Path); err != nil {
-			return nil, fmt.Errorf("expected to load root CA config from %s, but got err: %v", args.Api_Server_CA_Path, err)
-		} else {
-			tlsConfig.CAFile = args.Api_Server_CA_Path
+		if args.Api_Server_CA_Path != "" {
+			// rest.InClusterConfig is doing this most possibly only for early error handling so let's do the same
+			if _, err := certutil.NewPool(args.Api_Server_CA_Path); err != nil {
+				return nil, fmt.Errorf("expected to load root CA config from %s, but got err: %v", args.Api_Server_CA_Path, err)
+			} else {
+				tlsConfig.CAFile = args.Api_Server_CA_Path
+			}
 		}
 
 		cfg.TLSClientConfig = tlsConfig

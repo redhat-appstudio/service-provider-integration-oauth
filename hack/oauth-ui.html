@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script type="application/javascript">
+        function submit() {
+            let form = document.getElementById("form");
+            let oauthUrl = new URL(document.getElementById("oauth_url").value);
+            let stateInput = document.getElementById("state");
+            stateInput.value = oauthUrl.searchParams.get("state");
+            form.action = oauthUrl.origin + oauthUrl.pathname;
+            form.submit();
+        }
+    </script>
+    <title>The complex UI</title>
+</head>
+<body>
+<form id="form" method="post">
+    <input id="state" type="hidden" name="state"/>
+    <label for="k8s_token">K8s token:</label> <input id="k8s_token" type="text" name="k8s_token"/><br/>
+    <label for="oauth_url">OAuth Url:</label><input type="text" name="oauth_url" id="oauth_url"/>
+</form>
+<input type="button" onclick="submit()" value="Submit"/>
+</body>
+</html>

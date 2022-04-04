@@ -23,6 +23,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	authz "k8s.io/api/authorization/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	certutil "k8s.io/client-go/util/cert"
 
 	"github.com/alexedwards/scs"
@@ -134,7 +139,18 @@ func start(cfg config.Configuration, port int, kubeConfig *rest.Config, devmode 
 		kubeConfig.Insecure = true
 	}
 
-	cl, err := controllers.CreateClient(kubeConfig, client.Options{})
+	// we can't use the default dynamic rest mapper, because we don't have a token that would enable us to connect
+	// to the cluster just yet. Therefore, we need to list all the resources that we are ever going to query using our
+	// client here thus making the mapper not reach out to the target cluster at all.
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
+	mapper.Add(authz.SchemeGroupVersion.WithKind("SelfSubjectAccessReview"), meta.RESTScopeRoot)
+	mapper.Add(v1beta1.GroupVersion.WithKind("SPIAccessToken"), meta.RESTScopeNamespace)
+	mapper.Add(v1beta1.GroupVersion.WithKind("SPIAccessTokenDataUpdate"), meta.RESTScopeNamespace)
+
+	cl, err := controllers.CreateClient(kubeConfig, client.Options{
+		Mapper: mapper,
+	})
+
 	if err != nil {
 		zap.L().Error("failed to create kubernetes client", zap.Error(err))
 		return
@@ -157,15 +173,21 @@ func start(cfg config.Configuration, port int, kubeConfig *rest.Config, devmode 
 	router.HandleFunc("/callback_success", CallbackSuccessHandler).Methods("GET")
 	router.NewRoute().Path("/{type}/callback").Queries("error", "", "error_description", "").HandlerFunc(CallbackErrorHandler)
 
+	redirectTpl, err := template.ParseFiles("static/redirect_notice.html")
+	if err != nil {
+		zap.L().Error("failed to parse the redirect notice HTML template", zap.Error(err))
+		return
+	}
+
 	for _, sp := range cfg.ServiceProviders {
-		controller, err := controllers.FromConfiguration(cfg, sp, sessionManager, cl, strg)
+		controller, err := controllers.FromConfiguration(cfg, sp, sessionManager, cl, strg, redirectTpl)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}
 
 		prefix := strings.ToLower(string(sp.ServiceProviderType))
 
-		router.Handle(fmt.Sprintf("/%s/authenticate", prefix), http.HandlerFunc(controller.Authenticate)).Methods("GET")
+		router.Handle(fmt.Sprintf("/%s/authenticate", prefix), http.HandlerFunc(controller.Authenticate)).Methods("GET", "POST")
 		router.Handle(fmt.Sprintf("/%s/callback", prefix), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			controller.Callback(r.Context(), w, r)
 		})).Methods("GET")

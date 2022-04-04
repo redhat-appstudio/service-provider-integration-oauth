@@ -151,15 +151,13 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 
 	url := oauthCfg.AuthCodeURL(stateString)
 
-	tmpl, _ := template.ParseFiles("static/redirect_notice.html")
-
 	templateData := struct {
 		Url string
 	}{
 		Url: url,
 	}
 
-	err = tmpl.Execute(w, templateData)
+	err = c.RedirectTemplate.Execute(w, templateData)
 	if err != nil {
 		logAndWriteResponse(w, http.StatusInternalServerError, "failed to return redirect notice HTML page", err)
 		return

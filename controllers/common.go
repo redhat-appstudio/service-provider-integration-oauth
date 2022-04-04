@@ -16,6 +16,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"net/http"
 
 	"github.com/alexedwards/scs"
@@ -42,6 +43,7 @@ type commonController struct {
 	Endpoint         oauth2.Endpoint
 	BaseUrl          string
 	SessionManager   *scs.Manager
+	RedirectTemplate *template.Template
 }
 
 // exchangeState is the state that we're sending out to the SP after checking the anonymous oauth state produced by
@@ -90,7 +92,21 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hasAccess, err := c.checkIdentityHasAccess(r, state)
+	session := c.SessionManager.Load(r)
+
+	token := r.FormValue("k8s_token")
+
+	if token == "" {
+		token = ExtractTokenFromAuthorizationHeader(r.Header.Get("Authorization"))
+	}
+
+	if token == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = fmt.Fprintf(w, "failed extract authorization info either from headers or form/query parameters")
+		return
+	}
+
+	hasAccess, err := c.checkIdentityHasAccess(token, r, state)
 	if err != nil {
 		logAndWriteResponse(w, http.StatusInternalServerError, "failed to determine if the authenticated user has access", err)
 		return
@@ -106,19 +122,12 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 
 	flows := map[string]string{}
 
-	session := c.SessionManager.Load(r)
 	if err := session.GetObject("flows", &flows); err != nil {
 		logAndWriteResponse(w, http.StatusInternalServerError, "failed to decode session data", err)
 		return
 	}
 
-	authHeader := ExtractTokenFromAuthorizationHeader(r.Header.Get("Authorization"))
-	if authHeader == "" {
-		logAndWriteResponse(w, http.StatusInternalServerError, "failed to extract auth header after successfully checking it provides access to cluster. weird", err)
-		return
-	}
-
-	flows[flowKey] = authHeader
+	flows[flowKey] = token
 
 	if err := session.PutObject(w, "flows", flows); err != nil {
 		logAndWriteResponse(w, http.StatusInternalServerError, "failed to encode session data", err)
@@ -142,7 +151,17 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 
 	url := oauthCfg.AuthCodeURL(stateString)
 
-	http.Redirect(w, r, url, http.StatusFound)
+	templateData := struct {
+		Url string
+	}{
+		Url: url,
+	}
+
+	err = c.RedirectTemplate.Execute(w, templateData)
+	if err != nil {
+		logAndWriteResponse(w, http.StatusInternalServerError, "failed to return redirect notice HTML page", err)
+		return
+	}
 }
 
 func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -245,7 +264,7 @@ func logAndWriteResponse(w http.ResponseWriter, status int, msg string, err erro
 	zap.L().Error(msg, zap.Error(err))
 }
 
-func (c *commonController) checkIdentityHasAccess(req *http.Request, state oauthstate.AnonymousOAuthState) (bool, error) {
+func (c *commonController) checkIdentityHasAccess(token string, req *http.Request, state oauthstate.AnonymousOAuthState) (bool, error) {
 	review := v1.SelfSubjectAccessReview{
 		Spec: v1.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &v1.ResourceAttributes{
@@ -258,10 +277,7 @@ func (c *commonController) checkIdentityHasAccess(req *http.Request, state oauth
 		},
 	}
 
-	ctx, err := WithAuthFromRequestIntoContext(req, req.Context())
-	if err != nil {
-		return false, err
-	}
+	ctx := WithAuthIntoContext(token, req.Context())
 
 	if err := c.K8sClient.Create(ctx, &review); err != nil {
 		return false, err

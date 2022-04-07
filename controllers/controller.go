@@ -49,11 +49,11 @@ const (
 
 // FromConfiguration is a factory function to create instances of the Controller based on the service provider
 // configuration.
-func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceProviderConfiguration, sessionManager *scs.Manager, cl AuthenticatingClient, vaultStorage tokenstorage.TokenStorage, redirectTemplate *template.Template) (Controller, error) {
+func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceProviderConfiguration, sessionManager *scs.Manager, cl AuthenticatingClient, storage tokenstorage.TokenStorage, redirectTemplate *template.Template) (Controller, error) {
 	// use the notifying token storage to automatically inform the cluster about changes in the token storage
 	ts := &tokenstorage.NotifyingTokenStorage{
 		Client:       cl,
-		TokenStorage: vaultStorage,
+		TokenStorage: storage,
 	}
 
 	var endpoint oauth2.Endpoint

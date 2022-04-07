@@ -100,7 +100,7 @@ func handleUpload(uploader *controllers.TokenUploader) func(http.ResponseWriter,
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
-			zap.L().Error("error handling token upload: %s", zap.Error(err))
+			zap.L().Error("error handling token upload", zap.Error(err))
 			return
 		}
 

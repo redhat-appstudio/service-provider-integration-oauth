@@ -28,6 +28,7 @@ jobs:
         run: |
           minikube kubectl -- apply -f https://raw.githubusercontent.com/redhat-appstudio/service-provider-integration-operator/main/config/crd/bases/appstudio.redhat.com_spiaccesstokens.yaml
           minikube kubectl -- apply -f https://raw.githubusercontent.com/redhat-appstudio/service-provider-integration-operator/main/config/crd/bases/appstudio.redhat.com_spiaccesstokenbindings.yaml
+          minikube kubectl -- apply -f https://raw.githubusercontent.com/redhat-appstudio/service-provider-integration-operator/main/config/crd/bases/appstudio.redhat.com_spiaccesstokendataupdates.yaml
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:

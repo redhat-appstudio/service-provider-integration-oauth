@@ -266,13 +266,13 @@ func (c commonController) syncTokenData(ctx context.Context, exchange *exchangeR
 
 func logErrorAndWriteResponse(w http.ResponseWriter, status int, msg string, err error) {
 	w.WriteHeader(status)
-	_, _ = fmt.Fprintf(w, msg+": ", err.Error())
+	_, _ = fmt.Fprintf(w, "%s: %s", msg, err.Error())
 	zap.L().Error(msg, zap.Error(err))
 }
 
 func logDebugAndWriteResponse(w http.ResponseWriter, status int, msg string, fields ...zap.Field) {
 	w.WriteHeader(status)
-	_, _ = fmt.Fprintf(w, msg)
+	_, _ = fmt.Fprint(w, msg)
 	zap.L().Debug(msg, fields...)
 }
 

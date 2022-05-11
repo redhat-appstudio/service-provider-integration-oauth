@@ -6,6 +6,7 @@ require (
 	github.com/alexedwards/scs v1.4.1
 	github.com/alexflint/go-arg v1.4.3
 	github.com/go-jose/go-jose/v3 v3.0.0
+	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/vault v1.9.4
 	github.com/onsi/ginkgo v1.16.5
@@ -61,6 +62,7 @@ require (
 	github.com/evanphx/json-patch v4.11.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
+	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-logr/logr v0.4.0 // indirect
 	github.com/go-logr/zapr v0.4.0 // indirect

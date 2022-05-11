@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	stderrors "errors"
 	"fmt"
 	"html/template"
@@ -21,8 +22,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
+
+	"github.com/gorilla/handlers"
+	"go.uber.org/zap/zapio"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	authz "k8s.io/api/authorization/v1"
@@ -50,7 +55,7 @@ import (
 
 type cliArgs struct {
 	ConfigFile string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
-	Port       int    `arg:"-p, --port, env" default:"8000" help:"The port to listen on"`
+	Addr       string `arg:"-a, --addr, env" default:"0.0.0.0:8000" help:"Address to listen on"`
 	DevMode    bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
 	KubeConfig string `arg:"-k, --kubeconfig, env" default:"" help:""`
 	// snake-case used because of environment variable naming (API_SERVER and API_SERVER_CA_PATH)
@@ -149,10 +154,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	start(cfg, args.Port, kubeConfig, args.DevMode)
+	start(cfg, args.Addr, kubeConfig, args.DevMode)
 }
 
-func start(cfg config.Configuration, port int, kubeConfig *rest.Config, devmode bool) {
+func middlewareHandler(origins []string, h http.Handler) http.Handler {
+	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel}, handlers.CORS(handlers.AllowedOrigins(origins))(handlers.CompressHandler(h)))
+}
+
+func start(cfg config.Configuration, addr string, kubeConfig *rest.Config, devmode bool) {
 	router := mux.NewRouter()
 
 	// insecure mode only allowed when the trusted root certificate is not specified...
@@ -225,11 +234,42 @@ func start(cfg config.Configuration, port int, kubeConfig *rest.Config, devmode 
 		})).Methods("GET")
 	}
 
-	zap.L().Info("Starting the server", zap.Int("port", port))
-	err = http.ListenAndServe(fmt.Sprintf(":%d", port), router)
-	if err != nil {
-		zap.L().Error("failed to start the HTTP server", zap.Error(err))
+	zap.L().Info("Starting the server", zap.String("Addr", addr))
+	srv := &http.Server{
+		Addr: addr,
+		// Good practice to set timeouts to avoid Slowloris attacks.
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler:      middlewareHandler([]string{"console.dev.redhat.com", "prod.foo.redhat.comgit "}, router),
 	}
+
+	// Run our server in a goroutine so that it doesn't block.
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			zap.L().Error("failed to start the HTTP server", zap.Error(err))
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
+	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
+	signal.Notify(c, os.Interrupt)
+
+	// Block until we receive our signal.
+	<-c
+
+	// Create a deadline to wait for.
+	ctx, cancel := context.WithTimeout(context.Background(), 15)
+	defer cancel()
+	// Doesn't block if no connections, but will otherwise wait
+	// until the timeout deadline.
+	srv.Shutdown(ctx)
+	// Optionally, you could run srv.Shutdown in a goroutine and block on
+	// <-ctx.Done() if your application should wait for other services
+	// to finalize based on context cancellation.
+	zap.L().Info("shutting down")
+	os.Exit(0)
 }
 
 func kubernetesConfig(args *cliArgs) (*rest.Config, error) {

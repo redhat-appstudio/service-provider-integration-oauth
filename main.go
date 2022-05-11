@@ -54,10 +54,11 @@ import (
 )
 
 type cliArgs struct {
-	ConfigFile string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
-	Addr       string `arg:"-a, --addr, env" default:"0.0.0.0:8000" help:"Address to listen on"`
-	DevMode    bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
-	KubeConfig string `arg:"-k, --kubeconfig, env" default:"" help:""`
+	ConfigFile     string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
+	Addr           string `arg:"-a, --addr, env" default:"0.0.0.0:8000" help:"Address to listen on"`
+	AllowedOrigins string `arg:"-o, --origins, env" default:"console.dev.redhat.com,prod.foo.redhat.com" help:"List of domain allowed for cross domain requests"`
+	DevMode        bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
+	KubeConfig     string `arg:"-k, --kubeconfig, env" default:"" help:""`
 	// snake-case used because of environment variable naming (API_SERVER and API_SERVER_CA_PATH)
 	Api_Server         string `arg:"-a, --api-server, env" default:"" help:"host:port of the Kubernetes API server to use when handling HTTP requests"`
 	Api_Server_CA_Path string `arg:"-t, --ca-path, env" default:"" help:"the path to the CA certificate to use when connecting to the Kubernetes API server"`
@@ -154,14 +155,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	start(cfg, args.Addr, kubeConfig, args.DevMode)
+	start(cfg, args.Addr, strings.Split(args.AllowedOrigins, ","), kubeConfig, args.DevMode)
 }
 
-func middlewareHandler(origins []string, h http.Handler) http.Handler {
-	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel}, handlers.CORS(handlers.AllowedOrigins(origins))(handlers.CompressHandler(h)))
+func middlewareHandler(allowedOrigins []string, h http.Handler) http.Handler {
+	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel}, handlers.CORS(handlers.AllowedOrigins(allowedOrigins))(handlers.CompressHandler(h)))
 }
 
-func start(cfg config.Configuration, addr string, kubeConfig *rest.Config, devmode bool) {
+func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeConfig *rest.Config, devmode bool) {
 	router := mux.NewRouter()
 
 	// insecure mode only allowed when the trusted root certificate is not specified...
@@ -241,7 +242,7 @@ func start(cfg config.Configuration, addr string, kubeConfig *rest.Config, devmo
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      middlewareHandler([]string{"console.dev.redhat.com", "prod.foo.redhat.comgit "}, router),
+		Handler:      middlewareHandler(allowedOrigins, router),
 	}
 
 	// Run our server in a goroutine so that it doesn't block.

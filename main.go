@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap/zapcore"
+
 	"github.com/gorilla/handlers"
 	"go.uber.org/zap/zapio"
 
@@ -54,14 +56,24 @@ import (
 )
 
 type cliArgs struct {
-	ConfigFile     string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
-	Addr           string `arg:"-a, --addr, env" default:"0.0.0.0:8000" help:"Address to listen on"`
-	AllowedOrigins string `arg:"-o, --origins, env" default:"console.dev.redhat.com,prod.foo.redhat.com" help:"List of domain allowed for cross domain requests"`
-	DevMode        bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
-	KubeConfig     string `arg:"-k, --kubeconfig, env" default:"" help:""`
-	// snake-case used because of environment variable naming (API_SERVER and API_SERVER_CA_PATH)
-	Api_Server         string `arg:"-a, --api-server, env" default:"" help:"host:port of the Kubernetes API server to use when handling HTTP requests"`
-	Api_Server_CA_Path string `arg:"-t, --ca-path, env" default:"" help:"the path to the CA certificate to use when connecting to the Kubernetes API server"`
+	ConfigFile      string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
+	Addr            string `arg:"-a, --addr, env" default:"0.0.0.0:8000" help:"Address to listen on"`
+	AllowedOrigins  string `arg:"-o, --allowed-origins, env" default:"console.dev.redhat.com,prod.foo.redhat.com" help:"List of domain allowed for cross domain requests"`
+	DevMode         bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
+	KubeConfig      string `arg:"-k, --kubeconfig, env" default:"" help:""`
+	ApiServer       string `arg:"-a, --api-server, env:API_SERVER" default:"" help:"host:port of the Kubernetes API server to use when handling HTTP requests"`
+	ApiServerCAPath string `arg:"-t, --ca-path, env:API_SERVER_CA_PATH" default:"" help:"the path to the CA certificate to use when connecting to the Kubernetes API server"`
+}
+
+func (args *cliArgs) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddString("config-file", args.ConfigFile)
+	enc.AddString("addr", args.Addr)
+	enc.AddString("origins", args.AllowedOrigins)
+	enc.AddBool("dev-mode", args.DevMode)
+	enc.AddString("kubeconfig", args.KubeConfig)
+	enc.AddString("api-server", args.ApiServer)
+	enc.AddString("ca-path", args.ApiServerCAPath)
+	return nil
 }
 
 type viewData struct {
@@ -141,7 +153,7 @@ func main() {
 	undo := zap.ReplaceGlobals(logger)
 	defer undo()
 
-	zap.L().Debug("environment", zap.Strings("env", os.Environ()))
+	zap.L().Info("Starting OAuth service with environment", zap.Strings("env", os.Environ()), zap.Object("configuration", &args))
 
 	cfg, err := config.LoadFrom(args.ConfigFile)
 	if err != nil {
@@ -158,8 +170,8 @@ func main() {
 	start(cfg, args.Addr, strings.Split(args.AllowedOrigins, ","), kubeConfig, args.DevMode)
 }
 
-func middlewareHandler(allowedOrigins []string, h http.Handler) http.Handler {
-	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel}, handlers.CORS(handlers.AllowedOrigins(allowedOrigins))(handlers.CompressHandler(h)))
+func MiddlewareHandler(allowedOrigins []string, h http.Handler) http.Handler {
+	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel}, handlers.CORS(handlers.AllowedOrigins(allowedOrigins))(h))
 }
 
 func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeConfig *rest.Config, devmode bool) {
@@ -242,7 +254,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      middlewareHandler(allowedOrigins, router),
+		Handler:      MiddlewareHandler(allowedOrigins, router),
 	}
 
 	// Run our server in a goroutine so that it doesn't block.
@@ -276,14 +288,14 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 func kubernetesConfig(args *cliArgs) (*rest.Config, error) {
 	if args.KubeConfig != "" {
 		return clientcmd.BuildConfigFromFlags("", args.KubeConfig)
-	} else if args.Api_Server != "" {
+	} else if args.ApiServer != "" {
 		// here we're essentially replicating what is done in rest.InClusterConfig() but we're using our own
 		// configuration - this is to support going through an alternative API server to the one we're running with...
 		// Note that we're NOT adding the Token or the TokenFile to the configuration here. This is supposed to be
 		// handled on per-request basis...
 		cfg := rest.Config{}
 
-		apiServerUrl, err := url.Parse(args.Api_Server)
+		apiServerUrl, err := url.Parse(args.ApiServer)
 		if err != nil {
 			return nil, err
 		}
@@ -292,12 +304,12 @@ func kubernetesConfig(args *cliArgs) (*rest.Config, error) {
 
 		tlsConfig := rest.TLSClientConfig{}
 
-		if args.Api_Server_CA_Path != "" {
+		if args.ApiServerCAPath != "" {
 			// rest.InClusterConfig is doing this most possibly only for early error handling so let's do the same
-			if _, err := certutil.NewPool(args.Api_Server_CA_Path); err != nil {
-				return nil, fmt.Errorf("expected to load root CA config from %s, but got err: %v", args.Api_Server_CA_Path, err)
+			if _, err := certutil.NewPool(args.ApiServerCAPath); err != nil {
+				return nil, fmt.Errorf("expected to load root CA config from %s, but got err: %v", args.ApiServerCAPath, err)
 			} else {
-				tlsConfig.CAFile = args.Api_Server_CA_Path
+				tlsConfig.CAFile = args.ApiServerCAPath
 			}
 		}
 

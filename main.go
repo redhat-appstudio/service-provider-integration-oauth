@@ -68,7 +68,7 @@ type cliArgs struct {
 func (args *cliArgs) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("config-file", args.ConfigFile)
 	enc.AddString("addr", args.Addr)
-	enc.AddString("origins", args.AllowedOrigins)
+	enc.AddString("allowed-origins", args.AllowedOrigins)
 	enc.AddBool("dev-mode", args.DevMode)
 	enc.AddString("kubeconfig", args.KubeConfig)
 	enc.AddString("api-server", args.ApiServer)

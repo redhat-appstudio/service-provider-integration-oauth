@@ -93,4 +93,4 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check if dockerimage build is working
-        run: c
+        run: docker build -f ./Dockerfile .

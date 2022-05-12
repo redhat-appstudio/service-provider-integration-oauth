@@ -58,7 +58,7 @@ import (
 type cliArgs struct {
 	ConfigFile      string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
 	Addr            string `arg:"-a, --addr, env" default:"0.0.0.0:8000" help:"Address to listen on"`
-	AllowedOrigins  string `arg:"-o, --allowed-origins, env" default:"console.dev.redhat.com,prod.foo.redhat.com" help:"List of domain allowed for cross domain requests"`
+	AllowedOrigins  string `arg:"-o, --allowed-origins, env" default:"console.dev.redhat.com,prod.foo.redhat.com" help:"Comma-separated list of domains allowed for cross-domain requests"`
 	DevMode         bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
 	KubeConfig      string `arg:"-k, --kubeconfig, env" default:"" help:""`
 	ApiServer       string `arg:"-a, --api-server, env:API_SERVER" default:"" help:"host:port of the Kubernetes API server to use when handling HTTP requests"`
@@ -248,7 +248,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	}
 
 	zap.L().Info("Starting the server", zap.String("Addr", addr))
-	srv := &http.Server{
+	server := &http.Server{
 		Addr: addr,
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: time.Second * 15,
@@ -259,29 +259,30 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
-		if err := srv.ListenAndServe(); err != nil {
+		if err := server.ListenAndServe(); err != nil {
 			zap.L().Error("failed to start the HTTP server", zap.Error(err))
 		}
 	}()
 
-	c := make(chan os.Signal, 1)
-	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
-	signal.Notify(c, os.Interrupt)
+	// Setting up signal capturing
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
 
-	// Block until we receive our signal.
-	<-c
+	// Waiting for SIGINT (kill -2)
+	<-stop
 
 	// Create a deadline to wait for.
-	ctx, cancel := context.WithTimeout(context.Background(), 15)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline.
-	srv.Shutdown(ctx)
+	if err := server.Shutdown(ctx); err != nil {
+		zap.L().Fatal("OAuth server shutdown failed", zap.Error(err))
+	}
 	// Optionally, you could run srv.Shutdown in a goroutine and block on
 	// <-ctx.Done() if your application should wait for other services
 	// to finalize based on context cancellation.
-	zap.L().Info("shutting down")
+	zap.L().Info("OAuth server exited properly")
 	os.Exit(0)
 }
 

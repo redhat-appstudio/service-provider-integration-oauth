@@ -121,8 +121,11 @@ func TestK8sConfigParse(t *testing.T) {
 	env := []string{"API_SERVER=http://localhost:9001", "API_SERVER_CA_PATH=/etc/ca.crt"}
 	//then
 	args := cliArgs{}
-	parseWithEnv(cmd, env, &args)
+	_, err := parseWithEnv(cmd, env, &args)
 	//when
+	if err != nil {
+		t.Fatal(err)
+	}
 	if args.ApiServer != "http://localhost:9001" {
 		t.Fatal("Unable to parse k8s api server url")
 	}
@@ -137,8 +140,11 @@ func TestCorsConfigParse(t *testing.T) {
 	env := []string{"ALLOWEDORIGINS=prod.acme.com"}
 	//then
 	args := cliArgs{}
-	parseWithEnv(cmd, env, &args)
+	_, err := parseWithEnv(cmd, env, &args)
 	//when
+	if err != nil {
+		t.Fatal(err)
+	}
 	if args.AllowedOrigins != "prod.acme.com" {
 		t.Fatal("Unable to parse CORS allowed origins")
 	}

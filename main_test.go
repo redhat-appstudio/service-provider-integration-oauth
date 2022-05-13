@@ -15,12 +15,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/alexflint/go-arg"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/alexflint/go-arg"
 )
 
 func TestHealthCheckHandler(t *testing.T) {
@@ -190,6 +191,49 @@ func TestMiddlewareHandlerCorsPart(t *testing.T) {
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()
 	handler := MiddlewareHandler([]string{"console.dev.redhat.com", "prod.foo.redhat.com"}, http.HandlerFunc(OkHandler))
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	// Check the status code is what we expect.
+	if allowOrigin := rr.Header().Get("Access-Control-Allow-Origin"); allowOrigin != "prod.foo.redhat.com" {
+		t.Errorf("handler returned wrong header \"Access-Control-Allow-Origin\": got %v want %v",
+			allowOrigin, "prod.foo.redhat.com")
+	}
+
+}
+
+func TestMiddlewareHandlerCorsPart2(t *testing.T) {
+	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
+	// pass 'nil' as the third parameter.
+	req, err := http.NewRequest("OPTIONS", "/github/authenticate?state=eyJhbGciO", nil)
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Language", "c")
+	req.Header.Set("Access-Control-Request-Headers", "authorization")
+	req.Header.Set("Access-Control-Request-Method", "GET")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Origin", "https://file-retriever-server-service-spi-system.apps.cluster-flmv6.flmv6.sandbox1324.opentlc.com")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("Referer", "https://file-retriever-server-service-spi-system.apps.cluster-flmv6.flmv6.sandbox1324.opentlc.com/")
+	req.Header.Set("Sec-Fetch-Dest", "empty")
+	req.Header.Set("Sec-Fetch-Mode", "cors")
+	req.Header.Set("Sec-Fetch-Site", "same-site")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+	handler := MiddlewareHandler([]string{"https://file-retriever-server-service-spi-system.apps.cluster-flmv6.flmv6.sandbox1324.opentlc.com"}, http.HandlerFunc(OkHandler))
 
 	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
 	// directly and pass in our Request and ResponseRecorder.

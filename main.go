@@ -18,6 +18,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"html/template"
+
 	"net"
 	"net/http"
 	"net/url"
@@ -171,7 +172,7 @@ func main() {
 }
 
 func MiddlewareHandler(allowedOrigins []string, h http.Handler) http.Handler {
-	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel}, handlers.CORS(handlers.AllowedOrigins(allowedOrigins))(h))
+	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel}, handlers.CORS(handlers.AllowedOrigins(allowedOrigins), handlers.AllowCredentials(), handlers.AllowedHeaders([]string{"Accept", "Accept-Language", "Content-Language", "Origin", "Authorization"}))(h))
 }
 
 func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeConfig *rest.Config, devmode bool) {
@@ -187,6 +188,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	// client here thus making the mapper not reach out to the target cluster at all.
 	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
 	mapper.Add(authz.SchemeGroupVersion.WithKind("SelfSubjectAccessReview"), meta.RESTScopeRoot)
+	//	mapper.Add(auth.SchemeGroupVersion.WithKind("TokenReview"), meta.RESTScopeRoot)
 	mapper.Add(v1beta1.GroupVersion.WithKind("SPIAccessToken"), meta.RESTScopeNamespace)
 	mapper.Add(v1beta1.GroupVersion.WithKind("SPIAccessTokenDataUpdate"), meta.RESTScopeNamespace)
 
@@ -217,11 +219,12 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	sessionManager := scs.NewManager(memstore.New(5 * time.Minute))
 	sessionManager.Name("appstudio_spi_session")
 	sessionManager.IdleTimeout(15 * time.Minute)
-
+	authenticator := controllers.NewAuthenticator(sessionManager, cl)
 	//static routes first
 	router.HandleFunc("/health", OkHandler).Methods("GET")
 	router.HandleFunc("/ready", OkHandler).Methods("GET")
 	router.HandleFunc("/callback_success", CallbackSuccessHandler).Methods("GET")
+	router.HandleFunc("/login", authenticator.Login).Methods("POST")
 	router.NewRoute().Path("/{type}/callback").Queries("error", "", "error_description", "").HandlerFunc(CallbackErrorHandler)
 	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(handleUpload(&tokenUploader)).Methods("POST")
 
@@ -234,7 +237,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	for _, sp := range cfg.ServiceProviders {
 		zap.L().Debug("initializing service provider controller", zap.String("type", string(sp.ServiceProviderType)), zap.String("url", sp.ServiceProviderBaseUrl))
 
-		controller, err := controllers.FromConfiguration(cfg, sp, sessionManager, cl, strg, redirectTpl)
+		controller, err := controllers.FromConfiguration(cfg, sp, &authenticator, cl, strg, redirectTpl)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}

@@ -82,7 +82,7 @@ var _ = Describe("Controller", func() {
 		Fail("Could not find the token of the default service account in the test namespace", 1)
 		return ""
 	}
-
+	authenticator := NewAuthenticator(scs.NewManager(memstore.New(1000000*time.Hour)), IT.Client)
 	prepareController := func(g Gomega) *commonController {
 		tmpl, err := template.ParseFiles("../static/redirect_notice.html")
 		g.Expect(err).NotTo(HaveOccurred())
@@ -101,8 +101,9 @@ var _ = Describe("Controller", func() {
 				TokenURL:  "https://special.sp/toekn",
 				AuthStyle: oauth2.AuthStyleAutoDetect,
 			},
-			BaseUrl:          "https://spi.on.my.machine",
-			SessionManager:   scs.NewManager(memstore.New(1000000 * time.Hour)),
+			BaseUrl: "https://spi.on.my.machine",
+			//			SessionManager:   scs.NewManager(memstore.New(1000000 * time.Hour)),
+			Authenticator:    &authenticator,
 			RedirectTemplate: tmpl,
 		}
 	}

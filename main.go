@@ -19,41 +19,33 @@ import (
 	"fmt"
 	"html/template"
 
+	"github.com/alexedwards/scs"
+	"github.com/alexedwards/scs/stores/memstore"
+	"github.com/alexflint/go-arg"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zapio"
+	authz "k8s.io/api/authorization/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	certutil "k8s.io/client-go/util/cert"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"time"
-
-	"go.uber.org/zap/zapcore"
-
-	"github.com/gorilla/handlers"
-	"go.uber.org/zap/zapio"
-
-	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
-	authz "k8s.io/api/authorization/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	certutil "k8s.io/client-go/util/cert"
-
-	"github.com/alexedwards/scs"
-	"github.com/alexedwards/scs/stores/memstore"
-	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/alexflint/go-arg"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-
-	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
-	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
-
-	"github.com/gorilla/mux"
-	"go.uber.org/zap"
 )
 
 type cliArgs struct {
@@ -172,7 +164,10 @@ func main() {
 }
 
 func MiddlewareHandler(allowedOrigins []string, h http.Handler) http.Handler {
-	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel}, handlers.CORS(handlers.AllowedOrigins(allowedOrigins), handlers.AllowCredentials(), handlers.AllowedHeaders([]string{"Accept", "Accept-Language", "Content-Language", "Origin", "Authorization"}))(h))
+	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel},
+		handlers.CORS(handlers.AllowedOrigins(allowedOrigins),
+			handlers.AllowCredentials(),
+			handlers.AllowedHeaders([]string{"Accept", "Accept-Language", "Content-Language", "Origin", "Authorization"}))(h))
 }
 
 func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeConfig *rest.Config, devmode bool) {

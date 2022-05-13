@@ -91,9 +91,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		logErrorAndWriteResponse(w, http.StatusBadRequest, "failed to decode the OAuth state", err)
 		return
 	}
-	zap.L().Info("Authenticator")
 	token, error := c.Authenticator.GetToken(r)
-	zap.L().Info("Authenticator")
 	if err != nil {
 		logErrorAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful", error)
 	}
@@ -112,21 +110,6 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//flowKey := string(uuid.NewUUID())
-	//
-	//flows := map[string]string{}
-	//if err := session.GetObject("flows", &flows); err != nil {
-	//	logErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to decode session data", err)
-	//	return
-	//}
-
-	///	flows[flowKey] = token
-
-	//if err := session.PutObject(w, "flows", flows); err != nil {
-	//	logErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to encode session data", err)
-	//	return
-	//}
-	//
 	keyedState := exchangeState{
 		AnonymousOAuthState: state,
 	}
@@ -146,8 +129,6 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		logErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to return redirect notice HTML page", err)
 		return
 	}
-	//
-	//http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 	zap.L().Debug("/authenticate ok")
 }
 
@@ -197,17 +178,6 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	if err != nil {
 		return exchangeResult{result: oauthFinishError}, err
 	}
-
-	//session := c.SessionManager.Load(r)
-	//flows := map[string]string{}
-	//if err = session.GetObject("flows", &flows); err != nil {
-	//	return exchangeResult{result: oauthFinishError}, err
-	//}
-	//
-	//authHeader := flows[state.Key]
-	//if authHeader == "" {
-	//	return exchangeResult{result: oauthFinishK8sAuthRequired}, fmt.Errorf("no active oauth flow found for the state key")
-	//}
 
 	k8sToken, err := c.Authenticator.GetToken(r)
 	if err != nil {

@@ -27,6 +27,7 @@ type Authenticator struct {
 }
 
 func (a Authenticator) tokenReview(token string, req *http.Request) (bool, error) {
+	//TODO not working. temporary disabled.
 	//review := v1.TokenReview{
 	//	Spec: v1.TokenReviewSpec{
 	//		Token: token,
@@ -97,7 +98,6 @@ func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func NewAuthenticator(sessionManager *scs.Manager, cl AuthenticatingClient) Authenticator {
-
 	return Authenticator{
 		K8sClient:      cl,
 		SessionManager: sessionManager,

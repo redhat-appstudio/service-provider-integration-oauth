@@ -19,6 +19,14 @@ import (
 	"fmt"
 	"html/template"
 
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"strings"
+	"time"
+
 	"github.com/alexedwards/scs"
 	"github.com/alexedwards/scs/stores/memstore"
 	"github.com/alexflint/go-arg"
@@ -38,14 +46,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	certutil "k8s.io/client-go/util/cert"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"os/signal"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"time"
 )
 
 type cliArgs struct {

@@ -27,9 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexedwards/scs"
-	"github.com/alexedwards/scs/stores/memstore"
-
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -83,7 +80,7 @@ var _ = Describe("Controller", func() {
 		return ""
 	}
 	prepareAuthenticator := func(g Gomega) *Authenticator {
-		return NewAuthenticator(scs.NewManager(memstore.New(1000000*time.Hour)), IT.Client)
+		return NewAuthenticator(IT.SessionManager, IT.Client)
 	}
 	prepareController := func(g Gomega) *commonController {
 		tmpl, err := template.ParseFiles("../static/redirect_notice.html")
@@ -124,12 +121,15 @@ var _ = Describe("Controller", func() {
 		return c, res
 	}
 
-	authenticateFlow := func(g Gomega) (*commonController, *httptest.ResponseRecorder) {
-		token := grabK8sToken(g)
+	authenticateFlow := func(g Gomega, cookies []*http.Cookie) (*commonController, *httptest.ResponseRecorder) {
+		//token := grabK8sToken(g)
 
 		// This is the setup for the HTTP call to /github/authenticate
 		req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s", prepareAnonymousState()), nil)
-		req.Header.Set("Authorization", "Bearer "+token)
+		for _, cookie := range cookies {
+			req.Header.Set("Cookie", cookie.String())
+		}
+
 		res := httptest.NewRecorder()
 
 		c := prepareController(g)
@@ -165,13 +165,13 @@ var _ = Describe("Controller", func() {
 
 		c.Login(res, req)
 		Expect(res.Code).To(Equal(http.StatusOK))
+		Expect(res.Result().Cookies()).NotTo(BeEmpty())
 	})
 
 	It("redirects to SP OAuth URL with state and scopes", func() {
-		_, res := authenticateFlow(Default)
-
+		_, res := loginFlow(Default)
 		Expect(res.Code).To(Equal(http.StatusOK))
-
+		_, res = authenticateFlow(Default, res.Result().Cookies())
 		redirect := getRedirectUrlFromAuthenticateResponse(Default, res)
 
 		Expect(redirect.Scheme).To(Equal("https"))
@@ -182,7 +182,7 @@ var _ = Describe("Controller", func() {
 		Expect(redirect.Query().Get("response_type")).To(Equal("code"))
 		Expect(redirect.Query().Get("state")).NotTo(BeEmpty())
 		Expect(redirect.Query().Get("scope")).To(Equal("a b"))
-		Expect(res.Result().Cookies()).NotTo(BeEmpty())
+		//		Expect(res.Result().Cookies()).NotTo(BeEmpty())
 	})
 
 	When("OAuth initiated", func() {
@@ -219,7 +219,7 @@ var _ = Describe("Controller", func() {
 			// the plan).
 			Eventually(func(g Gomega) {
 				authenticator, res := loginFlow(g)
-				controller, res := authenticateFlow(g)
+				controller, res := authenticateFlow(g, res.Result().Cookies())
 
 				redirect := getRedirectUrlFromAuthenticateResponse(Default, res)
 
@@ -268,7 +268,7 @@ var _ = Describe("Controller", func() {
 			// the plan).
 			Eventually(func(g Gomega) {
 				authenticator, res := loginFlow(g)
-				controller, res := authenticateFlow(g)
+				controller, res := authenticateFlow(g, res.Result().Cookies())
 
 				redirect := getRedirectUrlFromAuthenticateResponse(Default, res)
 

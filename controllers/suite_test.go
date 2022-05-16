@@ -15,7 +15,10 @@ package controllers
 
 import (
 	"context"
+	"github.com/alexedwards/scs"
+	"github.com/alexedwards/scs/stores/memstore"
 	"testing"
+	"time"
 
 	authz "k8s.io/api/authorization/v1"
 
@@ -49,7 +52,7 @@ var IT = struct {
 	Clientset        *kubernetes.Clientset
 	TokenStorage     tokenstorage.TokenStorage
 	VaultTestCluster *vault.TestCluster
-	Authenticator    *Authenticator
+	SessionManager   *scs.Manager
 }{}
 
 func TestSuite(t *testing.T) {
@@ -113,6 +116,8 @@ var _ = BeforeSuite(func() {
 		Client:       IT.Client,
 		TokenStorage: IT.TokenStorage,
 	}
+
+	IT.SessionManager = scs.NewManager(memstore.New(1000000 * time.Hour))
 
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{

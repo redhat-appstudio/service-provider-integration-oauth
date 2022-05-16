@@ -270,7 +270,8 @@ var _ = Describe("Controller", func() {
 			// the need for this will disappear once we don't update the token anymore from OAuth service (which is
 			// the plan).
 			Eventually(func(g Gomega) {
-				authenticator, res := loginFlow(g)
+				_, res := loginFlow(g)
+				sessionCookies := res.Result().Cookies()
 				controller, res := authenticateFlow(g, res.Result().Cookies())
 
 				redirect := getRedirectUrlFromAuthenticateResponse(Default, res)
@@ -279,7 +280,9 @@ var _ = Describe("Controller", func() {
 
 				// simulate github redirecting back to our callback endpoint...
 				req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s&code=123&redirect_after_login=https://redirect.to?foo=bar", state), nil)
-				req.Header.Set("Cookie", res.Result().Cookies()[0].String())
+				for _, cookie := range sessionCookies {
+					req.Header.Set("Cookie", cookie.String())
+				}
 				res = httptest.NewRecorder()
 
 				// The callback handler will be reaching out to github to exchange the code for the token.. let's fake that
@@ -304,7 +307,6 @@ var _ = Describe("Controller", func() {
 						return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
 					}),
 				})
-				authenticator.Login(res, req)
 				controller.Callback(ctx, res, req)
 
 				g.Expect(res.Code).To(Equal(http.StatusFound))

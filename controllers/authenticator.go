@@ -97,8 +97,8 @@ func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
 	zap.L().Debug("/login ok")
 }
 
-func NewAuthenticator(sessionManager *scs.Manager, cl AuthenticatingClient) Authenticator {
-	return Authenticator{
+func NewAuthenticator(sessionManager *scs.Manager, cl AuthenticatingClient) *Authenticator {
+	return &Authenticator{
 		K8sClient:      cl,
 		SessionManager: sessionManager,
 	}

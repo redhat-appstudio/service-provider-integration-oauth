@@ -233,7 +233,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	for _, sp := range cfg.ServiceProviders {
 		zap.L().Debug("initializing service provider controller", zap.String("type", string(sp.ServiceProviderType)), zap.String("url", sp.ServiceProviderBaseUrl))
 
-		controller, err := controllers.FromConfiguration(cfg, sp, &authenticator, cl, strg, redirectTpl)
+		controller, err := controllers.FromConfiguration(cfg, sp, authenticator, cl, strg, redirectTpl)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}

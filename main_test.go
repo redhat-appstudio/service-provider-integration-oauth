@@ -246,9 +246,9 @@ func TestMiddlewareHandlerCorsPart2(t *testing.T) {
 	}
 
 	// Check the status code is what we expect.
-	if allowOrigin := rr.Header().Get("Access-Control-Allow-Origin"); allowOrigin != "prod.foo.redhat.com" {
+	if allowOrigin := rr.Header().Get("Access-Control-Allow-Origin"); allowOrigin != "https://file-retriever-server-service-spi-system.apps.cluster-flmv6.flmv6.sandbox1324.opentlc.com" {
 		t.Errorf("handler returned wrong header \"Access-Control-Allow-Origin\": got %v want %v",
-			allowOrigin, "prod.foo.redhat.com")
+			allowOrigin, "https://file-retriever-server-service-spi-system.apps.cluster-flmv6.flmv6.sandbox1324.opentlc.com")
 	}
 
 }

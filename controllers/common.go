@@ -91,9 +91,9 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		logErrorAndWriteResponse(w, http.StatusBadRequest, "failed to decode the OAuth state", err)
 		return
 	}
-	token, error := c.Authenticator.GetToken(r)
+	token, err := c.Authenticator.GetToken(r)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful", error)
+		logErrorAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful", err)
 	}
 	hasAccess, err := c.checkIdentityHasAccess(token, r, state)
 	if err != nil {

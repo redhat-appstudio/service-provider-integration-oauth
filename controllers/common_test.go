@@ -82,7 +82,9 @@ var _ = Describe("Controller", func() {
 		Fail("Could not find the token of the default service account in the test namespace", 1)
 		return ""
 	}
-	authenticator := NewAuthenticator(scs.NewManager(memstore.New(1000000*time.Hour)), IT.Client)
+	prepareAuthenticator := func(g Gomega) *Authenticator {
+		return NewAuthenticator(scs.NewManager(memstore.New(1000000*time.Hour)), IT.Client)
+	}
 	prepareController := func(g Gomega) *commonController {
 		tmpl, err := template.ParseFiles("../static/redirect_notice.html")
 		g.Expect(err).NotTo(HaveOccurred())
@@ -101,11 +103,25 @@ var _ = Describe("Controller", func() {
 				TokenURL:  "https://special.sp/toekn",
 				AuthStyle: oauth2.AuthStyleAutoDetect,
 			},
-			BaseUrl: "https://spi.on.my.machine",
-			//			SessionManager:   scs.NewManager(memstore.New(1000000 * time.Hour)),
-			Authenticator:    &authenticator,
+			BaseUrl:          "https://spi.on.my.machine",
+			Authenticator:    prepareAuthenticator(g),
 			RedirectTemplate: tmpl,
 		}
+	}
+
+	loginFlow := func(g Gomega) (*Authenticator, *httptest.ResponseRecorder) {
+		token := grabK8sToken(g)
+
+		// This is the setup for the HTTP call to /github/authenticate
+		req := httptest.NewRequest("POST", "/", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		res := httptest.NewRecorder()
+
+		c := prepareAuthenticator(g)
+
+		c.Login(res, req)
+
+		return c, res
 	}
 
 	authenticateFlow := func(g Gomega) (*commonController, *httptest.ResponseRecorder) {
@@ -138,19 +154,16 @@ var _ = Describe("Controller", func() {
 		return redirect
 	}
 
-	It("additionally accepts data in POST", func() {
+	It("authenticate in POST", func() {
 		token := grabK8sToken(Default)
 
-		// This is the setup for the HTTP call to /github/authenticate
 		req := httptest.NewRequest("POST", "/", nil)
-		req.Form = url.Values{}
-		req.Form.Set("state", prepareAnonymousState())
-		req.Form.Set("k8s_token", token)
+		req.Header.Set("Authorization", "Bearer "+token)
 		res := httptest.NewRecorder()
 
-		c := prepareController(Default)
+		c := prepareAuthenticator(Default)
 
-		c.Authenticate(res, req)
+		c.Login(res, req)
 		Expect(res.Code).To(Equal(http.StatusOK))
 	})
 
@@ -205,6 +218,7 @@ var _ = Describe("Controller", func() {
 			// the need for this will disappear once we don't update the token anymore from OAuth service (which is
 			// the plan).
 			Eventually(func(g Gomega) {
+				authenticator, res := loginFlow(g)
 				controller, res := authenticateFlow(g)
 
 				redirect := getRedirectUrlFromAuthenticateResponse(Default, res)
@@ -240,7 +254,7 @@ var _ = Describe("Controller", func() {
 						return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
 					}),
 				})
-
+				authenticator.Login(res, req)
 				controller.Callback(ctx, res, req)
 				g.Expect(res.Code).To(Equal(http.StatusFound))
 				Expect(serviceProviderReached).To(BeTrue())
@@ -253,6 +267,7 @@ var _ = Describe("Controller", func() {
 			// the need for this will disappear once we don't update the token anymore from OAuth service (which is
 			// the plan).
 			Eventually(func(g Gomega) {
+				authenticator, res := loginFlow(g)
 				controller, res := authenticateFlow(g)
 
 				redirect := getRedirectUrlFromAuthenticateResponse(Default, res)
@@ -286,7 +301,7 @@ var _ = Describe("Controller", func() {
 						return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
 					}),
 				})
-
+				authenticator.Login(res, req)
 				controller.Callback(ctx, res, req)
 
 				g.Expect(res.Code).To(Equal(http.StatusFound))

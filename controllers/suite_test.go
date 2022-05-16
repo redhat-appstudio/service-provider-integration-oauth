@@ -49,6 +49,7 @@ var IT = struct {
 	Clientset        *kubernetes.Clientset
 	TokenStorage     tokenstorage.TokenStorage
 	VaultTestCluster *vault.TestCluster
+	Authenticator    *Authenticator
 }{}
 
 func TestSuite(t *testing.T) {

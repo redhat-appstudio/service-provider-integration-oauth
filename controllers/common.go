@@ -90,7 +90,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := c.Authenticator.GetToken(r)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful", err)
+		logErrorAndWriteResponse(w, http.StatusUnauthorized, "No active session was found. Please use `/login` method to authorize your request and try again.", err)
 	}
 	hasAccess, err := c.checkIdentityHasAccess(token, r, state)
 	if err != nil {

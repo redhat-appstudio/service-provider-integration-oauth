@@ -91,6 +91,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	token, err := c.Authenticator.GetToken(r)
 	if err != nil {
 		logErrorAndWriteResponse(w, http.StatusUnauthorized, "No active session was found. Please use `/login` method to authorize your request and try again.", err)
+		return
 	}
 	hasAccess, err := c.checkIdentityHasAccess(token, r, state)
 	if err != nil {

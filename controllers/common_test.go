@@ -122,9 +122,7 @@ var _ = Describe("Controller", func() {
 	}
 
 	authenticateFlow := func(g Gomega, cookies []*http.Cookie) (*commonController, *httptest.ResponseRecorder) {
-		//token := grabK8sToken(g)
 
-		// This is the setup for the HTTP call to /github/authenticate
 		req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s", prepareAnonymousState()), nil)
 		for _, cookie := range cookies {
 			req.Header.Set("Cookie", cookie.String())

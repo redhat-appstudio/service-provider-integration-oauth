@@ -45,12 +45,9 @@ type commonController struct {
 }
 
 // exchangeState is the state that we're sending out to the SP after checking the anonymous oauth state produced by
-// the operator as the initial OAuth URL. Notice that the state doesn't contain any sensitive information. It only
-// contains the Key which is the key to the HTTP session that actually contains the authorization header to use when
-// finishing the OAuth flow.
+// the operator as the initial OAuth URL. Notice that the state doesn't contain any sensitive information.
 type exchangeState struct {
 	oauthstate.AnonymousOAuthState
-	Key string `json:"key"`
 }
 
 // exchangeResult this the result of the OAuth exchange with all the data necessary to store the token into the storage

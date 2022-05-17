@@ -70,8 +70,7 @@ func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if token == "" {
-		zap.L().Warn("Undesired usage of k8s_token as query parameter. Please consider to use Authorization header instead of query parameter.")
-		logDebugAndWriteResponse(w, http.StatusUnauthorized, "failed extract authorization info either from headers or form/query parameters")
+		logDebugAndWriteResponse(w, http.StatusUnauthorized, "failed extract authorization info either from headers or form parameters")
 		return
 	}
 	hasAccess, err := a.tokenReview(token, r)

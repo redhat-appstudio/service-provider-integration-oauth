@@ -182,7 +182,7 @@ var _ = Describe("Controller", func() {
 		Expect(redirect.Query().Get("response_type")).To(Equal("code"))
 		Expect(redirect.Query().Get("state")).NotTo(BeEmpty())
 		Expect(redirect.Query().Get("scope")).To(Equal("a b"))
-		//		Expect(res.Result().Cookies()).NotTo(BeEmpty())
+		Expect(res.Result().Cookies()).To(BeEmpty())
 	})
 
 	When("OAuth initiated", func() {

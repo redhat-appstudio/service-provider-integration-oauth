@@ -17,13 +17,13 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/alexedwards/scs"
+	"github.com/alexedwards/scs/v2"
 	"go.uber.org/zap"
 )
 
 type Authenticator struct {
 	K8sClient      AuthenticatingClient
-	SessionManager *scs.Manager
+	SessionManager *scs.SessionManager
 }
 
 func (a Authenticator) tokenReview(token string, req *http.Request) (bool, error) {
@@ -47,11 +47,7 @@ func (a Authenticator) tokenReview(token string, req *http.Request) (bool, error
 }
 func (a *Authenticator) GetToken(r *http.Request) (string, error) {
 	zap.L().Debug("/GetToken")
-	session := a.SessionManager.Load(r)
-	token, err := session.GetString("k8s_token")
-	if err != nil {
-		return "", err
-	}
+	token := a.SessionManager.GetString(r.Context(), "k8s_token")
 	if token == "" {
 		return "", errors.New("no token associated with the given session")
 	}
@@ -60,8 +56,6 @@ func (a *Authenticator) GetToken(r *http.Request) (string, error) {
 
 func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
 	zap.L().Debug("/login")
-
-	session := a.SessionManager.Load(r)
 
 	token := r.FormValue("k8s_token")
 
@@ -88,15 +82,12 @@ func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := session.PutString(w, "k8s_token", token); err != nil {
-		logErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to persist session data", err)
-		return
-	}
+	a.SessionManager.Put(r.Context(), "k8s_token", token)
 	w.WriteHeader(http.StatusOK)
 	zap.L().Debug("/login ok")
 }
 
-func NewAuthenticator(sessionManager *scs.Manager, cl AuthenticatingClient) *Authenticator {
+func NewAuthenticator(sessionManager *scs.SessionManager, cl AuthenticatingClient) *Authenticator {
 	return &Authenticator{
 		K8sClient:      cl,
 		SessionManager: sessionManager,

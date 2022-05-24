@@ -15,10 +15,12 @@ package controllers
 
 import (
 	"context"
-	"github.com/alexedwards/scs"
-	"github.com/alexedwards/scs/stores/memstore"
+	"net/http"
 	"testing"
 	"time"
+
+	"github.com/alexedwards/scs/v2"
+	"github.com/alexedwards/scs/v2/memstore"
 
 	authz "k8s.io/api/authorization/v1"
 
@@ -52,7 +54,7 @@ var IT = struct {
 	Clientset        *kubernetes.Clientset
 	TokenStorage     tokenstorage.TokenStorage
 	VaultTestCluster *vault.TestCluster
-	SessionManager   *scs.Manager
+	SessionManager   *scs.SessionManager
 }{}
 
 func TestSuite(t *testing.T) {
@@ -117,7 +119,12 @@ var _ = BeforeSuite(func() {
 		TokenStorage: IT.TokenStorage,
 	}
 
-	IT.SessionManager = scs.NewManager(memstore.New(1000000 * time.Hour))
+	IT.SessionManager = scs.New()
+	IT.SessionManager.Store = memstore.NewWithCleanupInterval(5 * time.Minute)
+	IT.SessionManager.IdleTimeout = 15 * time.Minute
+	IT.SessionManager.Cookie.Name = "appstudio_spi_session"
+	IT.SessionManager.Cookie.SameSite = http.SameSiteNoneMode
+	IT.SessionManager.Cookie.Secure = true
 
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{

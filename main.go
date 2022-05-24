@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"html/template"
 
+	"github.com/alexedwards/scs/v2/memstore"
+
 	"net"
 	"net/http"
 	"net/url"
@@ -27,8 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexedwards/scs"
-	"github.com/alexedwards/scs/stores/memstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -212,9 +213,12 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	}
 
 	// the session has 15 minutes timeout and stale sessions are cleaned every 5 minutes
-	sessionManager := scs.NewManager(memstore.New(5 * time.Minute))
-	sessionManager.Name("appstudio_spi_session")
-	sessionManager.IdleTimeout(15 * time.Minute)
+	sessionManager := scs.New()
+	sessionManager.Store = memstore.NewWithCleanupInterval(5 * time.Minute)
+	sessionManager.IdleTimeout = 15 * time.Minute
+	sessionManager.Cookie.Name = "appstudio_spi_session"
+	sessionManager.Cookie.SameSite = http.SameSiteNoneMode
+	sessionManager.Cookie.Secure = true
 	authenticator := controllers.NewAuthenticator(sessionManager, cl)
 	//static routes first
 	router.HandleFunc("/health", OkHandler).Methods("GET")
@@ -253,7 +257,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      MiddlewareHandler(allowedOrigins, router),
+		Handler:      sessionManager.LoadAndSave(MiddlewareHandler(allowedOrigins, router)),
 	}
 
 	// Run our server in a goroutine so that it doesn't block.

@@ -62,7 +62,6 @@ var _ = Describe("Controller", func() {
 
 	grabK8sToken := func(g Gomega) string {
 		var secrets *corev1.SecretList
-
 		g.Eventually(func(gg Gomega) {
 			var err error
 			secrets, err = IT.Clientset.CoreV1().Secrets(IT.Namespace).List(context.TODO(), metav1.ListOptions{})
@@ -108,15 +107,15 @@ var _ = Describe("Controller", func() {
 
 	loginFlow := func(g Gomega) (*Authenticator, *httptest.ResponseRecorder) {
 		token := grabK8sToken(g)
-
 		// This is the setup for the HTTP call to /github/authenticate
 		req := httptest.NewRequest("POST", "/", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		res := httptest.NewRecorder()
-
 		c := prepareAuthenticator(g)
 
-		c.Login(res, req)
+		IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.Login(w, r)
+		})).ServeHTTP(res, req)
 
 		return c, res
 	}
@@ -132,7 +131,9 @@ var _ = Describe("Controller", func() {
 
 		c := prepareController(g)
 
-		c.Authenticate(res, req)
+		IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.Authenticate(w, r)
+		})).ServeHTTP(res, req)
 
 		return c, res
 	}
@@ -160,8 +161,10 @@ var _ = Describe("Controller", func() {
 		res := httptest.NewRecorder()
 
 		c := prepareAuthenticator(Default)
+		IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.Login(w, r)
+		})).ServeHTTP(res, req)
 
-		c.Login(res, req)
 		Expect(res.Code).To(Equal(http.StatusOK))
 		Expect(res.Result().Cookies()).NotTo(BeEmpty())
 	})
@@ -180,7 +183,9 @@ var _ = Describe("Controller", func() {
 		Expect(redirect.Query().Get("response_type")).To(Equal("code"))
 		Expect(redirect.Query().Get("state")).NotTo(BeEmpty())
 		Expect(redirect.Query().Get("scope")).To(Equal("a b"))
-		Expect(res.Result().Cookies()).To(BeEmpty())
+		Expect(res.Result().Cookies()).NotTo(BeEmpty())
+		cookie := res.Result().Cookies()[0]
+		Expect(cookie.Name).To(Equal("appstudio_spi_session"))
 	})
 
 	When("OAuth initiated", func() {
@@ -256,7 +261,10 @@ var _ = Describe("Controller", func() {
 					}),
 				})
 
-				controller.Callback(ctx, res, req)
+				IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					controller.Callback(ctx, w, r)
+				})).ServeHTTP(res, req)
+
 				g.Expect(res.Code).To(Equal(http.StatusFound))
 				Expect(serviceProviderReached).To(BeTrue())
 			}).Should(Succeed())
@@ -305,7 +313,10 @@ var _ = Describe("Controller", func() {
 						return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
 					}),
 				})
-				controller.Callback(ctx, res, req)
+
+				IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					controller.Callback(ctx, w, r)
+				})).ServeHTTP(res, req)
 
 				g.Expect(res.Code).To(Equal(http.StatusFound))
 				g.Expect(res.Result().Header.Get("Location")).To(Equal("https://redirect.to?foo=bar"))

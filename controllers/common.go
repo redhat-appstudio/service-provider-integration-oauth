@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-
 	"strings"
 
 	v1 "k8s.io/api/authorization/v1"

@@ -18,9 +18,6 @@ import (
 	stderrors "errors"
 	"fmt"
 	"html/template"
-
-	"github.com/alexedwards/scs/v2/memstore"
-
 	"net"
 	"net/http"
 	"net/url"
@@ -30,10 +27,10 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
@@ -48,6 +45,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	certutil "k8s.io/client-go/util/cert"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
 )
 
 type cliArgs struct {

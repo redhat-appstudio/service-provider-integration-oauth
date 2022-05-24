@@ -62,6 +62,7 @@ var _ = Describe("Controller", func() {
 
 	grabK8sToken := func(g Gomega) string {
 		var secrets *corev1.SecretList
+
 		g.Eventually(func(gg Gomega) {
 			var err error
 			secrets, err = IT.Clientset.CoreV1().Secrets(IT.Namespace).List(context.TODO(), metav1.ListOptions{})
@@ -107,10 +108,12 @@ var _ = Describe("Controller", func() {
 
 	loginFlow := func(g Gomega) (*Authenticator, *httptest.ResponseRecorder) {
 		token := grabK8sToken(g)
+
 		// This is the setup for the HTTP call to /github/authenticate
 		req := httptest.NewRequest("POST", "/", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		res := httptest.NewRecorder()
+
 		c := prepareAuthenticator(g)
 
 		IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

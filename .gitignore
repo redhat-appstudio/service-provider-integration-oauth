@@ -13,3 +13,4 @@ _test
 *.out
 .idea/
 bin/
+.tmp/

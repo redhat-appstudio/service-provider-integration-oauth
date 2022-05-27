@@ -141,6 +141,21 @@ var _ = Describe("Controller", func() {
 		return c, res
 	}
 
+	authenticateFlowQueryParam := func(g Gomega) (*commonController, *httptest.ResponseRecorder) {
+		token := grabK8sToken(g)
+		req := httptest.NewRequest("GET", fmt.Sprintf("/?state=%s&k8s_token=%s", prepareAnonymousState(), token), nil)
+
+		res := httptest.NewRecorder()
+
+		c := prepareController(g)
+
+		IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.Authenticate(w, r)
+		})).ServeHTTP(res, req)
+
+		return c, res
+	}
+
 	getRedirectUrlFromAuthenticateResponse := func(g Gomega, res *httptest.ResponseRecorder) *url.URL {
 		body, err := ioutil.ReadAll(res.Result().Body)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -176,6 +191,23 @@ var _ = Describe("Controller", func() {
 		_, res := loginFlow(Default)
 		Expect(res.Code).To(Equal(http.StatusOK))
 		_, res = authenticateFlow(Default, res.Result().Cookies())
+		redirect := getRedirectUrlFromAuthenticateResponse(Default, res)
+
+		Expect(redirect.Scheme).To(Equal("https"))
+		Expect(redirect.Host).To(Equal("special.sp"))
+		Expect(redirect.Path).To(Equal("/login"))
+		Expect(redirect.Query().Get("client_id")).To(Equal("clientId"))
+		Expect(redirect.Query().Get("redirect_uri")).To(Equal("https://spi.on.my.machine/github/callback"))
+		Expect(redirect.Query().Get("response_type")).To(Equal("code"))
+		Expect(redirect.Query().Get("state")).NotTo(BeEmpty())
+		Expect(redirect.Query().Get("scope")).To(Equal("a b"))
+		Expect(res.Result().Cookies()).NotTo(BeEmpty())
+		cookie := res.Result().Cookies()[0]
+		Expect(cookie.Name).To(Equal("appstudio_spi_session"))
+	})
+
+	It("redirects to SP OAuth URL with state and scopes. Alternative login", func() {
+		_, res := authenticateFlowQueryParam(Default)
 		redirect := getRedirectUrlFromAuthenticateResponse(Default, res)
 
 		Expect(redirect.Scheme).To(Equal("https"))

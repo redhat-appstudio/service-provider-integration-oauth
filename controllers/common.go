@@ -89,7 +89,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := c.Authenticator.GetToken(r)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusUnauthorized, "No active session was found. Please use `/login` method to authorize your request and try again.", err)
+		logErrorAndWriteResponse(w, http.StatusUnauthorized, "No active session was found. Please use `/login` method to authorize your request and try again. Or provide the token as a `k8_token` query parameter.", err)
 		return
 	}
 	hasAccess, err := c.checkIdentityHasAccess(token, r, state)

@@ -47,9 +47,17 @@ func (a Authenticator) tokenReview(token string, req *http.Request) (bool, error
 }
 func (a *Authenticator) GetToken(r *http.Request) (string, error) {
 	zap.L().Debug("/GetToken")
-	token := a.SessionManager.GetString(r.Context(), "k8s_token")
+
+	token := r.URL.Query().Get("k8s_token")
 	if token == "" {
-		return "", errors.New("no token associated with the given session")
+		token = a.SessionManager.GetString(r.Context(), "k8s_token")
+	} else {
+		zap.L().Debug("persisting token that was provided by `k8_token` query parameter to the session")
+		a.SessionManager.Put(r.Context(), "k8s_token", token)
+	}
+
+	if token == "" {
+		return "", errors.New("no token associated with the given session or provided as a `k8_token` query parameter")
 	}
 	return token, nil
 }

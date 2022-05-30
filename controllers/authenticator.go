@@ -57,7 +57,7 @@ func (a *Authenticator) GetToken(r *http.Request) (string, error) {
 	}
 
 	if token == "" {
-		return "", errors.New("no token associated with the given session or provided as a `k8_token` query parameter")
+		return "", errors.New("no token associated with the given session or provided as a `k8s_token` query parameter")
 	}
 	return token, nil
 }

@@ -238,7 +238,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 
 		controller, err := controllers.FromConfiguration(cfg, sp, authenticator, cl, strg, redirectTpl)
 		if err != nil {
-			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
+			zap.L().Warn("failed to initialize controller for provider %s; It is either not implemented or does not supports OAuth. Error: %s", zap.Error(err))
 			continue
 		}
 

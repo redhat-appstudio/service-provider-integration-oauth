@@ -239,6 +239,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 		controller, err := controllers.FromConfiguration(cfg, sp, authenticator, cl, strg, redirectTpl)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
+			continue
 		}
 
 		prefix := strings.ToLower(string(sp.ServiceProviderType))

@@ -20,9 +20,18 @@ COPY controllers/ controllers/
 # available in the docker build.
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o spi-oauth main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+# Compose the final image
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-751
+
+# Install the 'shadow-utils' which contains `adduser` and `groupadd` binaries
+RUN microdnf install shadow-utils \
+	&& groupadd --gid 65532 nonroot \
+	&& adduser \
+		--no-create-home \
+		--no-user-group \
+		--uid 65532 \
+		--gid 65532 \
+		nonroot
 
 COPY --from=builder /spi-oauth/spi-oauth /spi-oauth
 COPY --from=builder /spi-oauth/static/callback_success.html /static/callback_success.html

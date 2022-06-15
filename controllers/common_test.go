@@ -71,7 +71,7 @@ var _ = Describe("Controller", func() {
 		}).Should(Succeed())
 
 		for _, s := range secrets.Items {
-			if s.Annotations["kubernetes.io/service-account.name"] == "default" {
+			if s.Annotations["kubernetes.io/service-account.name"] == "default" && string(s.Data["token"]) != "" {
 				return string(s.Data["token"])
 			}
 		}

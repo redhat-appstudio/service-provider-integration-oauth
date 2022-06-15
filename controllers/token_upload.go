@@ -20,6 +20,7 @@ import (
 	"github.com/gorilla/mux"
 	api "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -48,6 +49,8 @@ func (u *TokenUploader) Handle(r *http.Request) error {
 	if err := json.NewDecoder(r.Body).Decode(data); err != nil {
 		return err
 	}
-
+	if data.AccessToken == "" {
+		return errors.NewBadRequest("access token can't be omitted or empty")
+	}
 	return u.Storage.Store(ctx, token, data)
 }

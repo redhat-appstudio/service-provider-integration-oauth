@@ -14,7 +14,11 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,7 +26,22 @@ import (
 	"testing"
 
 	"github.com/alexflint/go-arg"
+	"github.com/gorilla/mux"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func TestMain(m *testing.M) {
+	logs.InitLoggers(true, flag.CommandLine)
+	os.Exit(m.Run())
+}
 
 func TestHealthCheckHandler(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
@@ -113,6 +132,116 @@ func TestCallbackErrorHandler(t *testing.T) {
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
+	}
+}
+func TestUploader(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&v1beta1.SPIAccessToken{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "umbrella",
+				Namespace: "jdoe",
+			},
+		},
+	).Build()
+
+	strg := tokenstorage.NotifyingTokenStorage{
+		Client: cl,
+		TokenStorage: tokenstorage.TestTokenStorage{
+			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
+				assert.Equal(t, v1beta1.Token{
+					AccessToken: "42",
+				}, *data)
+				return nil
+			},
+		},
+	}
+
+	uploader := &controllers.TokenUploader{
+		K8sClient: cl,
+		Storage:   strg,
+	}
+
+	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`{"access_token": "42"}`)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer kachny")
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+	var router = mux.NewRouter()
+	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(handleUpload(uploader)).Methods("POST")
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	router.ServeHTTP(rr, req)
+
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusNoContent {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+}
+
+func TestUploader_FailWithEmptyToken(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&v1beta1.SPIAccessToken{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "umbrella",
+				Namespace: "jdoe",
+			},
+		},
+	).Build()
+
+	strg := tokenstorage.NotifyingTokenStorage{
+		Client: cl,
+		TokenStorage: tokenstorage.TestTokenStorage{
+			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
+				assert.Fail(t, "should fail earlier")
+				return nil
+			},
+		},
+	}
+
+	uploader := &controllers.TokenUploader{
+		K8sClient: cl,
+		Storage:   strg,
+	}
+
+	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`{"username": "jdoe"}`)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer kachny")
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	w := httptest.NewRecorder()
+	var router = mux.NewRouter()
+	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(handleUpload(uploader)).Methods("POST")
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	router.ServeHTTP(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+	// Check the status code is what we expect.
+
+	if status := res.StatusCode; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "access token can't be omitted or empty" {
+		t.Errorf("expected 'access token can't be omitted or empty' got '%v'", string(data))
 	}
 }
 

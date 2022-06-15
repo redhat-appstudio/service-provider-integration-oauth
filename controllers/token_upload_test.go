@@ -24,6 +24,7 @@ import (
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -72,4 +73,48 @@ func TestTokenUploader_Handle(t *testing.T) {
 
 	token := &v1beta1.SPIAccessToken{}
 	assert.NoError(t, cl.Get(context.TODO(), client.ObjectKey{Name: "token", Namespace: "default"}, token))
+}
+func TestTokenUploaderHandle_ShouldFailOnEmptyToken(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
+
+	router := mux.NewRouter()
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&v1beta1.SPIAccessToken{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "token",
+				Namespace: "default",
+			},
+		},
+	).Build()
+
+	strg := tokenstorage.NotifyingTokenStorage{
+		Client: cl,
+		TokenStorage: tokenstorage.TestTokenStorage{
+			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
+				return nil
+			},
+		},
+	}
+
+	uploader := TokenUploader{
+		K8sClient: cl,
+		Storage:   strg,
+	}
+
+	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		err := uploader.Handle(request)
+		if assert.Error(t, err) {
+			assert.Equal(t, errors.NewBadRequest("access token can't be omitted or empty"), err)
+		}
+
+	}).Methods("POST")
+
+	wrt := httptest.ResponseRecorder{}
+	req, err := http.NewRequest("POST", "/token/default/token", bytes.NewBuffer([]byte(`{"access_token": ""}`)))
+	assert.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer kachny")
+	router.ServeHTTP(&wrt, req)
+
 }

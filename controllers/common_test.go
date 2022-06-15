@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/oauthstate"
@@ -71,6 +72,8 @@ var _ = Describe("Controller", func() {
 		}).Should(Succeed())
 
 		for _, s := range secrets.Items {
+			zap.L().Info("s", zap.String("name", s.Name), zap.String("namespace", s.Namespace), zap.String("token", string(s.Data["token"])), zap.String("annotation", s.Annotations["kubernetes.io/service-account.name"]))
+
 			if s.Annotations["kubernetes.io/service-account.name"] == "default" && string(s.Data["token"]) != "" {
 				return string(s.Data["token"])
 			}

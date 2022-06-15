@@ -109,6 +109,10 @@ func handleUpload(uploader *controllers.TokenUploader) func(http.ResponseWriter,
 		if err := uploader.Handle(r); err != nil {
 			if status := errors.APIStatus(nil); stderrors.As(err, &status) {
 				w.WriteHeader(int(status.Status().Code))
+				_, err = w.Write([]byte(status.Status().Message))
+				if err != nil {
+					zap.L().Error("failt to write error message to response", zap.Error(err))
+				}
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
 			}

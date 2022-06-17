@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/vault v1.9.4
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
-	github.com/redhat-appstudio/service-provider-integration-operator v0.6.0
+	github.com/redhat-appstudio/service-provider-integration-operator v0.6.1
 	github.com/stretchr/testify v1.7.1
 	go.uber.org/zap v1.19.1
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8

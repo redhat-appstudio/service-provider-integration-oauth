@@ -62,7 +62,7 @@ var _ = Describe("Controller", func() {
 	grabK8sToken := func(g Gomega) string {
 		var result string
 		//Obtaining token implemented with fallback-retry approach because
-		//for OpenShift token delivering token content may take 1-3 seconds,
+		//for OpenShift token delivering may take up to 1-3 seconds,
 		//for Minikube that happens almost instantaneously.
 		g.Eventually(func(gg Gomega) bool {
 			var err error

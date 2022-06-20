@@ -14,6 +14,8 @@
 package controllers
 
 import (
+	"fmt"
+
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	authz "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,22 +39,22 @@ func CreateClient(cfg *rest.Config, options client.Options) (AuthenticatingClien
 	}
 
 	if err = corev1.AddToScheme(scheme); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to add corev1 to scheme: %w", err)
 	}
 
 	if err = v1beta1.AddToScheme(scheme); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to add api to the scheme: %w", err)
 	}
 
 	if err = authz.AddToScheme(scheme); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to add authz to the scheme: %w", err)
 	}
 
 	AugmentConfiguration(cfg)
 
 	cl, err := client.New(cfg, options)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create a kubernetes client: %w", err)
 	}
 
 	return cl, nil

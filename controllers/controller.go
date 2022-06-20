@@ -15,7 +15,7 @@ package controllers
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"html/template"
 	"net/http"
 
@@ -23,6 +23,10 @@ import (
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
+)
+
+var (
+	notImplementedError = errors.New("not implemented yet")
 )
 
 // Controller implements the OAuth flow. There are specific implementations for each service provider type. These
@@ -63,7 +67,7 @@ func FromConfiguration(fullConfig config.Configuration, spConfig config.ServiceP
 	case config.ServiceProviderTypeQuay:
 		endpoint = quayEndpoint
 	default:
-		return nil, fmt.Errorf("not implemented yet")
+		return nil, notImplementedError
 	}
 
 	return &commonController{

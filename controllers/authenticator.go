@@ -26,6 +26,10 @@ type Authenticator struct {
 	SessionManager *scs.SessionManager
 }
 
+var (
+	noTokenFoundError = errors.New("no token associated with the given session or provided as a `k8s_token` query parameter")
+)
+
 func (a Authenticator) tokenReview(token string, req *http.Request) (bool, error) {
 	//TODO not working. temporary disabled.
 	//review := v1.TokenReview{
@@ -57,7 +61,7 @@ func (a *Authenticator) GetToken(r *http.Request) (string, error) {
 	}
 
 	if token == "" {
-		return "", errors.New("no token associated with the given session or provided as a `k8s_token` query parameter")
+		return "", noTokenFoundError
 	}
 	return token, nil
 }

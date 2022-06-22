@@ -51,11 +51,12 @@ func (u *TokenUploader) Handle(r *http.Request) error {
 		return fmt.Errorf("failed to decode request body as token JSON: %w", err)
 	}
 
-	if err = u.Storage.Store(ctx, token, data); err != nil {
-		return fmt.Errorf("failed to store the token data into storage: %w", err)
-	}
 	if data.AccessToken == "" {
 		return errors.NewBadRequest("access token can't be omitted or empty")
+	}
+
+	if err = u.Storage.Store(ctx, token, data); err != nil {
+		return fmt.Errorf("failed to store the token data into storage: %w", err)
 	}
 	return u.Storage.Store(ctx, token, data)
 }

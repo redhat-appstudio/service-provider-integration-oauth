@@ -24,7 +24,6 @@ import (
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -106,7 +105,7 @@ func TestTokenUploaderHandle_ShouldFailOnEmptyToken(t *testing.T) {
 	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		err := uploader.Handle(request)
 		if assert.Error(t, err) {
-			assert.Equal(t, errors.NewBadRequest("access token can't be omitted or empty"), err)
+			assert.Equal(t, EmptyOrOmittedAccessTokenError, err)
 		}
 
 	}).Methods("POST")

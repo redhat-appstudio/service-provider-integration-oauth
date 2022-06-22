@@ -15,14 +15,11 @@ package controllers
 
 import (
 	"encoding/json"
-	e "errors"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	api "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -34,9 +31,6 @@ type TokenUploader struct {
 func (u *TokenUploader) Handle(r *http.Request) error {
 	ctx, err := WithAuthFromRequestIntoContext(r, r.Context())
 	if err != nil {
-		if e.Is(err, noBearerTokenError) {
-			return errors.NewBadRequest(err.Error())
-		}
 		return err
 	}
 
@@ -47,20 +41,20 @@ func (u *TokenUploader) Handle(r *http.Request) error {
 
 	token := &api.SPIAccessToken{}
 	if err := u.K8sClient.Get(ctx, client.ObjectKey{Name: tokenObjectName, Namespace: tokenObjectNamespace}, token); err != nil {
-		return errors.NewInternalError(fmt.Errorf("failed to get SPIAccessToken object %s/%s: %w", tokenObjectNamespace, tokenObjectName, err))
+		return &SPIAccessTokenFetchError{tokenObjectNamespace, tokenObjectName, err}
 	}
 
 	data := &api.Token{}
 	if err := json.NewDecoder(r.Body).Decode(data); err != nil {
-		return errors.NewBadRequest(fmt.Sprintf("failed to decode request body as token JSON: %s", err))
+		return &JsonParseError{err}
 	}
 
 	if data.AccessToken == "" {
-		return errors.NewBadRequest("access token can't be omitted or empty")
+		return EmptyOrOmittedAccessTokenError
 	}
 
 	if err = u.Storage.Store(ctx, token, data); err != nil {
-		return errors.NewInternalError(fmt.Errorf("failed to store the token data into storage: %w", err))
+		return &TokenStorageSaveError{err}
 	}
 	return nil
 }

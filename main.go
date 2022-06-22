@@ -15,7 +15,7 @@ package main
 
 import (
 	"context"
-	stderrors "errors"
+	"errors"
 	"fmt"
 	"html/template"
 	"net"
@@ -38,7 +38,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zapio"
 	authz "k8s.io/api/authorization/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
@@ -107,20 +106,27 @@ func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 func handleUpload(uploader *controllers.TokenUploader) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := uploader.Handle(r); err != nil {
-			if status := errors.APIStatus(nil); stderrors.As(err, &status) {
-				w.WriteHeader(int(status.Status().Code))
-				_, err = w.Write([]byte(status.Status().Message))
-				if err != nil {
-					zap.L().Error("failt to write error message to response", zap.Error(err))
-				}
-			} else {
-				w.WriteHeader(http.StatusInternalServerError)
-			}
 			zap.L().Error("error handling token upload", zap.Error(err))
+			switch err.(type) {
+			case *controllers.SPIAccessTokenFetchError:
+			case *controllers.TokenStorageSaveError:
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			case *controllers.JsonParseError:
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			default:
+				if errors.Is(err, controllers.NoBearerTokenError) || errors.Is(err, controllers.EmptyOrOmittedAccessTokenError) {
+					w.WriteHeader(http.StatusBadRequest)
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+			}
+			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-
-		w.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusAccepted)
 	}
 }
 

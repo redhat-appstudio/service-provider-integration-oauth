@@ -27,7 +27,6 @@ import (
 
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
-	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
@@ -36,6 +35,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
 )
 
 func TestMain(m *testing.M) {
@@ -180,9 +181,9 @@ func TestUploader(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusNoContent {
+	if status := rr.Code; status != http.StatusAccepted {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
+			status, http.StatusAccepted)
 	}
 }
 

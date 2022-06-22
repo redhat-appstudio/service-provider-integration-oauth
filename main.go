@@ -294,7 +294,12 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 
 func kubernetesConfig(args *cliArgs) (*rest.Config, error) {
 	if args.KubeConfig != "" {
-		return clientcmd.BuildConfigFromFlags("", args.KubeConfig)
+		cfg, err := clientcmd.BuildConfigFromFlags("", args.KubeConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create rest configuration: %w", err)
+		}
+
+		return cfg, nil
 	} else if args.ApiServer != "" {
 		// here we're essentially replicating what is done in rest.InClusterConfig() but we're using our own
 		// configuration - this is to support going through an alternative API server to the one we're running with...
@@ -304,7 +309,7 @@ func kubernetesConfig(args *cliArgs) (*rest.Config, error) {
 
 		apiServerUrl, err := url.Parse(args.ApiServer)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse the API server URL: %w", err)
 		}
 
 		cfg.Host = "https://" + net.JoinHostPort(apiServerUrl.Hostname(), apiServerUrl.Port())
@@ -314,7 +319,7 @@ func kubernetesConfig(args *cliArgs) (*rest.Config, error) {
 		if args.ApiServerCAPath != "" {
 			// rest.InClusterConfig is doing this most possibly only for early error handling so let's do the same
 			if _, err := certutil.NewPool(args.ApiServerCAPath); err != nil {
-				return nil, fmt.Errorf("expected to load root CA config from %s, but got err: %v", args.ApiServerCAPath, err)
+				return nil, fmt.Errorf("expected to load root CA config from %s, but got err: %w", args.ApiServerCAPath, err)
 			} else {
 				tlsConfig.CAFile = args.ApiServerCAPath
 			}
@@ -324,6 +329,10 @@ func kubernetesConfig(args *cliArgs) (*rest.Config, error) {
 
 		return &cfg, nil
 	} else {
-		return rest.InClusterConfig()
+		cfg, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize in-cluster config: %w", err)
+		}
+		return cfg, nil
 	}
 }

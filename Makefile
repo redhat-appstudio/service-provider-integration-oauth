@@ -26,13 +26,37 @@ help: ## Display this help.
 ##@ Development
 
 test: fmt fmt_license vet envtest ## Run the unit tests
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) --arch=amd64 use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+	GOMEGA_DEFAULT_EVENTUALLY_TIMEOUT=10s \
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) --arch=amd64 use $(ENVTEST_K8S_VERSION) -p path)" \
+	go test ./... -coverprofile cover.out
 
 run: ## Run the binary
 	go run main.go
 
 vet: fmt fmt_license ## Run go vet against code.
 	go vet ./...
+
+check_fmt:
+  ifeq ($(shell command -v goimports 2> /dev/null),)
+	  $(error "goimports must be installed for this rule" && exit 1)
+  endif
+  ifeq ($(shell command -v addlicense 2> /dev/null),)
+	  $(error "error addlicense must be installed for this rule: go get -u github.com/google/addlicense")
+  endif
+	  if [[ $$(find . -not -path '*/\.*' -name '*.go' -exec goimports -l {} \;) != "" ]]; then \
+	    echo "Files not formatted; run 'make fmt'"; exit 1 ;\
+	  fi ;\
+	  if ! addlicense -check -f license_header.txt $$(find . -not -path '*/\.*' -name '*.go'); then \
+	    echo "Licenses are not formatted; run 'make fmt_license'"; exit 1 ;\
+	  fi
+
+lint: ## Run the linter on the codebase
+  ifeq ($(shell command -v golangci-lint 2> /dev/null),)
+	  $(error "golangci-lint must be installed for this rule" && exit 1)
+  endif
+	golangci-lint run
+
+check: check_fmt lint test ## Check that the code conforms to all requirements for commit. Formatting, licenses, vet, tests and linters
 
 ##@ Build
 

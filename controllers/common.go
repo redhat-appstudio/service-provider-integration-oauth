@@ -15,6 +15,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -29,6 +30,10 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	noActiveSessionError = errors.New("no active oauth session found")
 )
 
 // commonController is the implementation of the Controller interface that assumes typical OAuth flow.
@@ -167,18 +172,18 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	stateString := r.FormValue("state")
 	codec, err := oauthstate.NewCodec(c.JwtSigningSecret)
 	if err != nil {
-		return exchangeResult{result: oauthFinishError}, err
+		return exchangeResult{result: oauthFinishError}, fmt.Errorf("failed to create JWT codec: %w", err)
 	}
 
 	state := &exchangeState{}
 	err = codec.ParseInto(stateString, state)
 	if err != nil {
-		return exchangeResult{result: oauthFinishError}, err
+		return exchangeResult{result: oauthFinishError}, fmt.Errorf("failed to parse JWT state string: %w", err)
 	}
 
-	k8sToken, err := c.Authenticator.GetToken(r)
+	k8sToken, err := c.Authenticator.GetToken(r) //nolint:contextCheck // no idea why contextCheck is complaining here - we're not doing any HTTP requests with this call
 	if err != nil {
-		return exchangeResult{result: oauthFinishK8sAuthRequired}, fmt.Errorf("no active oauth session found")
+		return exchangeResult{result: oauthFinishK8sAuthRequired}, noActiveSessionError
 	}
 
 	// the state is ok, let's retrieve the token from the service provider
@@ -192,7 +197,7 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	scopeOption := oauth2.SetAuthURLParam("scope", r.FormValue("scope"))
 	token, err := oauthCfg.Exchange(ctx, code, scopeOption)
 	if err != nil {
-		return exchangeResult{result: oauthFinishError}, err
+		return exchangeResult{result: oauthFinishError}, fmt.Errorf("failed to finish the OAuth exchange: %w", err)
 	}
 	return exchangeResult{
 		exchangeState:       *state,
@@ -208,7 +213,7 @@ func (c commonController) syncTokenData(ctx context.Context, exchange *exchangeR
 
 	accessToken := &v1beta1.SPIAccessToken{}
 	if err := c.K8sClient.Get(ctx, client.ObjectKey{Name: exchange.TokenName, Namespace: exchange.TokenNamespace}, accessToken); err != nil {
-		return err
+		return fmt.Errorf("failed to get the SPIAccessToken object %s/%s: %w", exchange.TokenNamespace, exchange.TokenName, err)
 	}
 
 	apiToken := v1beta1.Token{
@@ -218,7 +223,11 @@ func (c commonController) syncTokenData(ctx context.Context, exchange *exchangeR
 		Expiry:       uint64(exchange.token.Expiry.Unix()),
 	}
 
-	return c.TokenStorage.Store(ctx, accessToken, &apiToken)
+	if err := c.TokenStorage.Store(ctx, accessToken, &apiToken); err != nil {
+		return fmt.Errorf("failed to persist the token to storage: %w", err)
+	}
+
+	return nil
 }
 
 func logErrorAndWriteResponse(w http.ResponseWriter, status int, msg string, err error) {
@@ -249,7 +258,7 @@ func (c *commonController) checkIdentityHasAccess(token string, req *http.Reques
 	ctx := WithAuthIntoContext(token, req.Context())
 
 	if err := c.K8sClient.Create(ctx, &review); err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to create SelfSubjectAccessReview: %w", err)
 	}
 
 	zap.L().Debug("self subject review result", zap.Stringer("review", &review))

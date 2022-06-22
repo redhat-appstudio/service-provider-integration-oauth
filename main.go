@@ -111,7 +111,6 @@ func handleUpload(uploader *controllers.TokenUploader) func(http.ResponseWriter,
 			case *controllers.SPIAccessTokenFetchError:
 			case *controllers.TokenStorageSaveError:
 				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte(err.Error()))
 				return
 			case *controllers.JsonParseError:
 				w.WriteHeader(http.StatusBadRequest)
@@ -123,7 +122,10 @@ func handleUpload(uploader *controllers.TokenUploader) func(http.ResponseWriter,
 					w.WriteHeader(http.StatusInternalServerError)
 				}
 			}
-			_, _ = w.Write([]byte(err.Error()))
+			_, err = w.Write([]byte(err.Error()))
+			if err != nil {
+				zap.L().Error("error recording response error message", zap.Error(err))
+			}
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)

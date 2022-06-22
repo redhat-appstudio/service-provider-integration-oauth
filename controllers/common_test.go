@@ -76,7 +76,7 @@ var _ = Describe("Controller", func() {
 				}
 			}
 			return false
-		}, 1*time.Minute, 500*time.Millisecond).Should(BeTrue(), "Could not find the token of the default service account in the test namespace")
+		}).Should(BeTrue(), "Could not find the token of the default service account in the test namespace")
 
 		return result
 	}

@@ -26,7 +26,9 @@ help: ## Display this help.
 ##@ Development
 
 test: fmt fmt_license vet envtest ## Run the unit tests
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) --arch=amd64 use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+	GOMEGA_DEFAULT_EVENTUALLY_TIMEOUT=10s \
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) --arch=amd64 use $(ENVTEST_K8S_VERSION) -p path)" \
+	go test -v ./... -coverprofile cover.out
 
 run: ## Run the binary
 	go run main.go

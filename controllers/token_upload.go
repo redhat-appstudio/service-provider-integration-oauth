@@ -15,6 +15,7 @@ package controllers
 
 import (
 	"encoding/json"
+	e "errors"
 	"fmt"
 	"net/http"
 
@@ -33,6 +34,9 @@ type TokenUploader struct {
 func (u *TokenUploader) Handle(r *http.Request) error {
 	ctx, err := WithAuthFromRequestIntoContext(r, r.Context())
 	if err != nil {
+		if e.Is(err, noBearerTokenError) {
+			return errors.NewBadRequest(err.Error())
+		}
 		return err
 	}
 
@@ -43,12 +47,12 @@ func (u *TokenUploader) Handle(r *http.Request) error {
 
 	token := &api.SPIAccessToken{}
 	if err := u.K8sClient.Get(ctx, client.ObjectKey{Name: tokenObjectName, Namespace: tokenObjectNamespace}, token); err != nil {
-		return fmt.Errorf("failed to get SPIAccessToken object %s/%s: %w", tokenObjectNamespace, tokenObjectName, err)
+		return errors.NewInternalError(fmt.Errorf("failed to get SPIAccessToken object %s/%s: %w", tokenObjectNamespace, tokenObjectName, err))
 	}
 
 	data := &api.Token{}
 	if err := json.NewDecoder(r.Body).Decode(data); err != nil {
-		return fmt.Errorf("failed to decode request body as token JSON: %w", err)
+		return errors.NewBadRequest(fmt.Sprintf("failed to decode request body as token JSON: %s", err))
 	}
 
 	if data.AccessToken == "" {
@@ -56,7 +60,7 @@ func (u *TokenUploader) Handle(r *http.Request) error {
 	}
 
 	if err = u.Storage.Store(ctx, token, data); err != nil {
-		return fmt.Errorf("failed to store the token data into storage: %w", err)
+		return errors.NewInternalError(fmt.Errorf("failed to store the token data into storage: %w", err))
 	}
-	return u.Storage.Store(ctx, token, data)
+	return nil
 }

@@ -15,48 +15,8 @@ package controllers
 
 import (
 	"errors"
-	"fmt"
 )
 
 var (
-	NoBearerTokenError             = errors.New("no bearer token found")
-	EmptyOrOmittedAccessTokenError = errors.New("access token can't be omitted or empty")
+	NoBearerTokenError = errors.New("no bearer token found")
 )
-
-type SPIAccessTokenFetchError struct {
-	TokenObjectNamespace string
-	TokenObjectName      string
-	Cause                error
-}
-
-func (e *SPIAccessTokenFetchError) Error() string {
-	return fmt.Sprintf("failed to get SPIAccessToken object %s/%s: %s", e.TokenObjectNamespace, e.TokenObjectName, e.Cause)
-}
-
-func (e *SPIAccessTokenFetchError) Unwrap() error {
-	return e.Cause
-}
-
-type JsonParseError struct {
-	Cause error
-}
-
-func (e *JsonParseError) Error() string {
-	return fmt.Sprintf("failed to decode request body as token JSON: %s", e.Cause)
-}
-
-func (e *JsonParseError) Unwrap() error {
-	return e.Cause
-}
-
-type TokenStorageSaveError struct {
-	Cause error
-}
-
-func (e *TokenStorageSaveError) Error() string {
-	return fmt.Sprintf("failed to store the token data into storage: %s", e.Cause)
-}
-
-func (e *TokenStorageSaveError) Unwrap() error {
-	return e.Cause
-}

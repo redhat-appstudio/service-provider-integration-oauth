@@ -7,6 +7,9 @@ WORKDIR /spi-oauth
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
 COPY static/callback_success.html static/callback_success.html
 COPY static/callback_error.html static/callback_error.html
 COPY static/redirect_notice.html static/redirect_notice.html

@@ -79,6 +79,7 @@ func HandleUpload(uploader *TokenUploader) func(http.ResponseWriter, *http.Reque
 					w.WriteHeader(http.StatusInternalServerError)
 				}
 			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			_, err = w.Write([]byte(err.Error()))
 			if err != nil {
 				zap.L().Error("error recording response error message", zap.Error(err))

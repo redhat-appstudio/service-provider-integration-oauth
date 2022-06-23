@@ -71,7 +71,9 @@ func HandleUpload(uploader *TokenUploader) func(http.ResponseWriter, *http.Reque
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			default:
-				if errors.Is(err, NoBearerTokenError) || errors.Is(err, EmptyOrOmittedAccessTokenError) {
+				if errors.Is(err, NoBearerTokenError) {
+					w.WriteHeader(http.StatusUnauthorized)
+				} else if errors.Is(err, EmptyOrOmittedAccessTokenError) {
 					w.WriteHeader(http.StatusBadRequest)
 				} else {
 					w.WriteHeader(http.StatusInternalServerError)

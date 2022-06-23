@@ -123,7 +123,7 @@ func TestCallbackErrorHandler(t *testing.T) {
 	}
 }
 
-func TestUploader(t *testing.T) {
+func TestUploader202(t *testing.T) {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(v1beta1.AddToScheme(scheme))
 
@@ -231,6 +231,65 @@ func TestUploader_FailWithEmptyToken(t *testing.T) {
 	}
 	if string(data) != "access token can't be omitted or empty" {
 		t.Errorf("expected 'access token can't be omitted or empty' got '%v'", string(data))
+	}
+}
+
+func TestUploader_FailWithoutAuthorization(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&v1beta1.SPIAccessToken{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "umbrella",
+				Namespace: "jdoe",
+			},
+		},
+	).Build()
+
+	strg := tokenstorage.NotifyingTokenStorage{
+		Client: cl,
+		TokenStorage: tokenstorage.TestTokenStorage{
+			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
+				assert.Fail(t, "should fail earlier")
+				return nil
+			},
+		},
+	}
+
+	uploader := &TokenUploader{
+		K8sClient: cl,
+		Storage:   strg,
+	}
+
+	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`{"access_token": "42"}`)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Del("Authorization")
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	w := httptest.NewRecorder()
+	var router = mux.NewRouter()
+	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(HandleUpload(uploader)).Methods("POST")
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	router.ServeHTTP(w, req)
+	res := w.Result()
+	defer res.Body.Close()
+	// Check the status code is what we expect.
+
+	if status := res.StatusCode; status != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusUnauthorized)
+	}
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != NoBearerTokenError.Error() {
+		t.Errorf("expected '"+NoBearerTokenError.Error()+"' got '%v'", string(data))
 	}
 }
 

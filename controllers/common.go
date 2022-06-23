@@ -83,23 +83,23 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	stateString := r.FormValue("state")
 	codec, err := oauthstate.NewCodec(c.JwtSigningSecret)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to instantiate OAuth stateString codec", err)
+		LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to instantiate OAuth stateString codec", err)
 		return
 	}
 
 	state, err := codec.ParseAnonymous(stateString)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusBadRequest, "failed to decode the OAuth state", err)
+		LogErrorAndWriteResponse(w, http.StatusBadRequest, "failed to decode the OAuth state", err)
 		return
 	}
 	token, err := c.Authenticator.GetToken(r)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusUnauthorized, "No active session was found. Please use `/login` method to authorize your request and try again. Or provide the token as a `k8s_token` query parameter.", err)
+		LogErrorAndWriteResponse(w, http.StatusUnauthorized, "No active session was found. Please use `/login` method to authorize your request and try again. Or provide the token as a `k8s_token` query parameter.", err)
 		return
 	}
 	hasAccess, err := c.checkIdentityHasAccess(token, r, state)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to determine if the authenticated user has access", err)
+		LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to determine if the authenticated user has access", err)
 		zap.L().Warn("The token is incorrect or the SPI OAuth service is not configured properly " +
 			"and the API_SERVER environment variable points it to the incorrect Kubernetes API server. " +
 			"If SPI is running with Devsandbox Proxy or KCP, make sure this env var points to the Kubernetes API proxy," +
@@ -108,7 +108,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !hasAccess {
-		logDebugAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
+		LogDebugAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
 		return
 	}
 
@@ -128,7 +128,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	zap.L().Info("Redirecting ", zap.String("url", templateData.Url))
 	err = c.RedirectTemplate.Execute(w, templateData)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to return redirect notice HTML page", err)
+		LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to return redirect notice HTML page", err)
 		return
 	}
 	zap.L().Debug("/authenticate ok")
@@ -139,18 +139,18 @@ func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r
 
 	exchange, err := c.finishOAuthExchange(ctx, r, c.Endpoint)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusBadRequest, "error in Service Provider token exchange", err)
+		LogErrorAndWriteResponse(w, http.StatusBadRequest, "error in Service Provider token exchange", err)
 		return
 	}
 
 	if exchange.result == oauthFinishK8sAuthRequired {
-		logErrorAndWriteResponse(w, http.StatusUnauthorized, "could not authenticate to Kubernetes", err)
+		LogErrorAndWriteResponse(w, http.StatusUnauthorized, "could not authenticate to Kubernetes", err)
 		return
 	}
 
 	err = c.syncTokenData(ctx, &exchange)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to store token data to cluster", err)
+		LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to store token data to cluster", err)
 		return
 	}
 
@@ -228,18 +228,6 @@ func (c commonController) syncTokenData(ctx context.Context, exchange *exchangeR
 	}
 
 	return nil
-}
-
-func logErrorAndWriteResponse(w http.ResponseWriter, status int, msg string, err error) {
-	w.WriteHeader(status)
-	_, _ = fmt.Fprintf(w, "%s: %s", msg, err.Error())
-	zap.L().Error(msg, zap.Error(err))
-}
-
-func logDebugAndWriteResponse(w http.ResponseWriter, status int, msg string, fields ...zap.Field) {
-	w.WriteHeader(status)
-	_, _ = fmt.Fprint(w, msg)
-	zap.L().Debug(msg, fields...)
 }
 
 func (c *commonController) checkIdentityHasAccess(token string, req *http.Request, state oauthstate.AnonymousOAuthState) (bool, error) {

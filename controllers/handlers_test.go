@@ -16,20 +16,15 @@ package controllers
 import (
 	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
-	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	api "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestOkHandler(t *testing.T) {
@@ -124,35 +119,15 @@ func TestCallbackErrorHandler(t *testing.T) {
 	}
 }
 
-func TestUploader202(t *testing.T) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
+func TestUploaderOk(t *testing.T) {
 
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-		&v1beta1.SPIAccessToken{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "umbrella",
-				Namespace: "jdoe",
-			},
-		},
-	).Build()
-
-	strg := tokenstorage.NotifyingTokenStorage{
-		Client: cl,
-		TokenStorage: tokenstorage.TestTokenStorage{
-			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
-				assert.Equal(t, v1beta1.Token{
-					AccessToken: "42",
-				}, *data)
-				return nil
-			},
-		},
-	}
-
-	uploader := &TokenUploader{
-		K8sClient: cl,
-		Storage:   strg,
-	}
+	uploader := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+		assert.Equal(t, "umbrella", tokenObjectName)
+		assert.Equal(t, "jdoe", tokenObjectNamespace)
+		assert.Equal(t, "42", data.AccessToken)
+		assert.Empty(t, data.Username)
+		return nil
+	})
 
 	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`{"access_token": "42"}`)))
 	if err != nil {
@@ -177,32 +152,10 @@ func TestUploader202(t *testing.T) {
 }
 
 func TestUploader_FailWithEmptyToken(t *testing.T) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
-
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-		&v1beta1.SPIAccessToken{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "umbrella",
-				Namespace: "jdoe",
-			},
-		},
-	).Build()
-
-	strg := tokenstorage.NotifyingTokenStorage{
-		Client: cl,
-		TokenStorage: tokenstorage.TestTokenStorage{
-			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
-				assert.Fail(t, "should fail earlier")
-				return nil
-			},
-		},
-	}
-
-	uploader := &TokenUploader{
-		K8sClient: cl,
-		Storage:   strg,
-	}
+	uploader := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+		assert.Fail(t, "This line should not be reached")
+		return nil
+	})
 
 	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`{"username": "jdoe"}`)))
 	if err != nil {
@@ -236,32 +189,10 @@ func TestUploader_FailWithEmptyToken(t *testing.T) {
 }
 
 func TestUploader_FailWithoutAuthorization(t *testing.T) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
-
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-		&v1beta1.SPIAccessToken{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "umbrella",
-				Namespace: "jdoe",
-			},
-		},
-	).Build()
-
-	strg := tokenstorage.NotifyingTokenStorage{
-		Client: cl,
-		TokenStorage: tokenstorage.TestTokenStorage{
-			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
-				assert.Fail(t, "should fail earlier")
-				return nil
-			},
-		},
-	}
-
-	uploader := &TokenUploader{
-		K8sClient: cl,
-		Storage:   strg,
-	}
+	uploader := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+		assert.Fail(t, "This line should not be reached")
+		return nil
+	})
 
 	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`{"access_token": "42"}`)))
 	if err != nil {
@@ -289,40 +220,17 @@ func TestUploader_FailWithoutAuthorization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(data) != NoBearerTokenError.Error() {
-		t.Errorf("expected '"+NoBearerTokenError.Error()+"' got '%v'", string(data))
+	var expected = "failed extract authorization information from headers: no bearer token found"
+	if string(data) != expected {
+		t.Errorf("expected '"+expected+"' got '%v'", string(data))
 	}
 }
 
 func TestUploader_FailJsonParse(t *testing.T) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
-
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-		&v1beta1.SPIAccessToken{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "umbrella",
-				Namespace: "jdoe",
-			},
-		},
-	).Build()
-
-	strg := tokenstorage.NotifyingTokenStorage{
-		Client: cl,
-		TokenStorage: tokenstorage.TestTokenStorage{
-			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
-				assert.Equal(t, v1beta1.Token{
-					AccessToken: "42",
-				}, *data)
-				return nil
-			},
-		},
-	}
-
-	uploader := &TokenUploader{
-		K8sClient: cl,
-		Storage:   strg,
-	}
+	uploader := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+		assert.Fail(t, "This line should not be reached")
+		return nil
+	})
 
 	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`this is not a json`)))
 	if err != nil {
@@ -356,39 +264,11 @@ func TestUploader_FailJsonParse(t *testing.T) {
 	}
 }
 
-func TestUploader_FailSPIAccessTokenFetchError(t *testing.T) {
-	//TODO no way to fake errors at this moment
-}
+func TestUploader_FailUploaderError(t *testing.T) {
+	uploader := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
 
-func TestUploader_FailTokenStorageSaveError(t *testing.T) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
-
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-		&v1beta1.SPIAccessToken{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "umbrella",
-				Namespace: "jdoe",
-			},
-		},
-	).Build()
-
-	strg := tokenstorage.NotifyingTokenStorage{
-		Client: cl,
-		TokenStorage: tokenstorage.TestTokenStorage{
-			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
-				assert.Equal(t, v1beta1.Token{
-					AccessToken: "42",
-				}, *data)
-				return errors.New("some storage error")
-			},
-		},
-	}
-
-	uploader := &TokenUploader{
-		K8sClient: cl,
-		Storage:   strg,
-	}
+		return fmt.Errorf("failed to store the token data into storage")
+	})
 
 	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`{"access_token": "42"}`)))
 
@@ -417,7 +297,46 @@ func TestUploader_FailTokenStorageSaveError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var expected = "failed to store the token data into storage: wrapped storage error: some storage error"
+	var expected = "failed to upload the token: failed to store the token data into storage"
+	if string(data) != expected {
+		t.Errorf("expected '"+expected+"' got '%v'", string(data))
+	}
+}
+
+func TestUploader_FailIncorrectHandlerConfiguration(t *testing.T) {
+	uploader := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+
+		return fmt.Errorf("failed to store the token data into storage")
+	})
+
+	req, err := http.NewRequest("POST", "/token", bytes.NewBuffer([]byte(`{"access_token": "42"}`)))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer kachny")
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+	var router = mux.NewRouter()
+	router.NewRoute().Path("/token").HandlerFunc(HandleUpload(uploader)).Methods("POST")
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	router.ServeHTTP(rr, req)
+	res := rr.Result()
+	defer res.Body.Close()
+	// Check the status code is what we expect.
+
+	if status := res.StatusCode; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusInternalServerError)
+	}
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var expected = "Incorrect service deployment. Token name and namespace can't be omitted or empty."
 	if string(data) != expected {
 		t.Errorf("expected '"+expected+"' got '%v'", string(data))
 	}

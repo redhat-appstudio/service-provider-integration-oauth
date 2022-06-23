@@ -14,47 +14,37 @@
 package controllers
 
 import (
-	"encoding/json"
-	"net/http"
+	"context"
+	"fmt"
 
-	"github.com/gorilla/mux"
 	api "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type TokenUploader struct {
+type TokenUploader interface {
+	Upload(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error
+}
+
+type UploadFunc func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error
+
+func (u UploadFunc) Upload(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+	return u(ctx, tokenObjectName, tokenObjectNamespace, data)
+}
+
+type SpiTokenUploader struct {
 	K8sClient client.Client
 	Storage   tokenstorage.TokenStorage
 }
 
-func (u *TokenUploader) Handle(r *http.Request) error {
-	ctx, err := WithAuthFromRequestIntoContext(r, r.Context())
-	if err != nil {
-		return err
-	}
-
-	vars := mux.Vars(r)
-
-	tokenObjectName := vars["name"]
-	tokenObjectNamespace := vars["namespace"]
-
+func (u *SpiTokenUploader) Upload(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
 	token := &api.SPIAccessToken{}
 	if err := u.K8sClient.Get(ctx, client.ObjectKey{Name: tokenObjectName, Namespace: tokenObjectNamespace}, token); err != nil {
-		return &SPIAccessTokenFetchError{tokenObjectNamespace, tokenObjectName, err}
+		return fmt.Errorf("failed to get SPIAccessToken object %s/%s: %w", tokenObjectName, tokenObjectNamespace, err)
 	}
 
-	data := &api.Token{}
-	if err := json.NewDecoder(r.Body).Decode(data); err != nil {
-		return &JsonParseError{err}
-	}
-
-	if data.AccessToken == "" {
-		return EmptyOrOmittedAccessTokenError
-	}
-
-	if err = u.Storage.Store(ctx, token, data); err != nil {
-		return &TokenStorageSaveError{err}
+	if err := u.Storage.Store(ctx, token, data); err != nil {
+		return fmt.Errorf("failed to store the token data into storage: %w", err)
 	}
 	return nil
 }

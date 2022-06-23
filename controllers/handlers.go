@@ -14,12 +14,14 @@
 package controllers
 
 import (
-	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
 
+	"github.com/go-jose/go-jose/v3/json"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	api "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapio"
 )
@@ -58,33 +60,36 @@ func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func HandleUpload(uploader *TokenUploader) func(http.ResponseWriter, *http.Request) {
+func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := uploader.Handle(r); err != nil {
-			zap.L().Error("error handling token upload", zap.Error(err))
-			switch err.(type) {
-			case *SPIAccessTokenFetchError:
-			case *TokenStorageSaveError:
-				w.WriteHeader(http.StatusInternalServerError)
-				break
-			case *JsonParseError:
-				w.WriteHeader(http.StatusBadRequest)
-				break
-			default:
-				if errors.Is(err, NoBearerTokenError) {
-					w.WriteHeader(http.StatusUnauthorized)
-				} else if errors.Is(err, EmptyOrOmittedAccessTokenError) {
-					w.WriteHeader(http.StatusBadRequest)
-				} else {
-					w.WriteHeader(http.StatusInternalServerError)
-				}
-				break
-			}
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			_, err = w.Write([]byte(err.Error()))
-			if err != nil {
-				zap.L().Error("error recording response error message", zap.Error(err))
-			}
+		ctx, err := WithAuthFromRequestIntoContext(r, r.Context())
+		if err != nil {
+			LogErrorAndWriteResponse(w, http.StatusUnauthorized, "failed extract authorization information from headers", err)
+			return
+		}
+
+		vars := mux.Vars(r)
+		tokenObjectName := vars["name"]
+		tokenObjectNamespace := vars["namespace"]
+
+		if len(tokenObjectName) < 1 || len(tokenObjectNamespace) < 1 {
+			LogAndWriteResponse(w, http.StatusInternalServerError, "Incorrect service deployment. Token name and namespace can't be omitted or empty.")
+			return
+		}
+
+		data := &api.Token{}
+		if err := json.NewDecoder(r.Body).Decode(data); err != nil {
+			LogErrorAndWriteResponse(w, http.StatusBadRequest, "failed to decode request body as token JSON", err)
+			return
+		}
+
+		if data.AccessToken == "" {
+			LogAndWriteResponse(w, http.StatusBadRequest, "access token can't be omitted or empty")
+			return
+		}
+
+		if err := uploader.Upload(ctx, tokenObjectName, tokenObjectNamespace, data); err != nil {
+			LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to upload the token", err)
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)

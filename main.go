@@ -142,7 +142,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 		return
 	}
 
-	tokenUploader := controllers.TokenUploader{
+	tokenUploader := controllers.SpiTokenUploader{
 		K8sClient: cl,
 		Storage: tokenstorage.NotifyingTokenStorage{
 			Client:       cl,

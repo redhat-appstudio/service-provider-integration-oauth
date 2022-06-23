@@ -76,12 +76,12 @@ func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if token == "" {
-		logDebugAndWriteResponse(w, http.StatusUnauthorized, "failed extract authorization info either from headers or form parameters")
+		LogDebugAndWriteResponse(w, http.StatusUnauthorized, "failed extract authorization info either from headers or form parameters")
 		return
 	}
 	hasAccess, err := a.tokenReview(token, r)
 	if err != nil {
-		logErrorAndWriteResponse(w, http.StatusUnauthorized, "failed to determine if the authenticated user has access", err)
+		LogErrorAndWriteResponse(w, http.StatusUnauthorized, "failed to determine if the authenticated user has access", err)
 		zap.L().Warn("The token is incorrect or the SPI OAuth service is not configured properly " +
 			"and the API_SERVER environment variable points it to the incorrect Kubernetes API server. " +
 			"If SPI is running with Devsandbox Proxy or KCP, make sure this env var points to the Kubernetes API proxy," +
@@ -90,7 +90,7 @@ func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !hasAccess {
-		logDebugAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
+		LogDebugAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
 		return
 	}
 

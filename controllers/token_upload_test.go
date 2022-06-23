@@ -13,89 +13,134 @@
 
 package controllers
 
-//func TestTokenUploader_Handle(t *testing.T) {
-//	scheme := runtime.NewScheme()
-//	utilruntime.Must(v1beta1.AddToScheme(scheme))
-//
-//	router := mux.NewRouter()
-//
-//	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-//		&v1beta1.SPIAccessToken{
-//			ObjectMeta: metav1.ObjectMeta{
-//				Name:      "token",
-//				Namespace: "default",
-//			},
-//		},
-//	).Build()
-//
-//	strg := tokenstorage.NotifyingTokenStorage{
-//		Client: cl,
-//		TokenStorage: tokenstorage.TestTokenStorage{
-//			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
-//				return nil
-//			},
-//		},
-//	}
-//
-//	uploader := TokenUploader{
-//		K8sClient: cl,
-//		Storage:   strg,
-//	}
-//
-//	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-//		assert.NoError(t, uploader.Handle(request))
-//	}).Methods("POST")
-//
-//	wrt := httptest.ResponseRecorder{}
-//	req, err := http.NewRequest("POST", "/token/default/token", bytes.NewBuffer([]byte(`{"access_token": "42"}`)))
-//	assert.NoError(t, err)
-//	req.Header.Set("Authorization", "Bearer kachny")
-//	router.ServeHTTP(&wrt, req)
-//
-//	token := &v1beta1.SPIAccessToken{}
-//	assert.NoError(t, cl.Get(context.TODO(), client.ObjectKey{Name: "token", Namespace: "default"}, token))
-//}
-//
-//func TestTokenUploaderHandle_ShouldFailOnEmptyToken(t *testing.T) {
-//	scheme := runtime.NewScheme()
-//	utilruntime.Must(v1beta1.AddToScheme(scheme))
-//
-//	router := mux.NewRouter()
-//
-//	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
-//		&v1beta1.SPIAccessToken{
-//			ObjectMeta: metav1.ObjectMeta{
-//				Name:      "token",
-//				Namespace: "default",
-//			},
-//		},
-//	).Build()
-//
-//	strg := tokenstorage.NotifyingTokenStorage{
-//		Client: cl,
-//		TokenStorage: tokenstorage.TestTokenStorage{
-//			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
-//				return nil
-//			},
-//		},
-//	}
-//
-//	uploader := TokenUploader{
-//		K8sClient: cl,
-//		Storage:   strg,
-//	}
-//
-//	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-//		err := uploader.Handle(request)
-//		if assert.Error(t, err) {
-//			assert.Equal(t, EmptyOrOmittedAccessTokenError, err)
-//		}
-//
-//	}).Methods("POST")
-//
-//	wrt := httptest.ResponseRecorder{}
-//	req, err := http.NewRequest("POST", "/token/default/token", bytes.NewBuffer([]byte(`{"access_token": ""}`)))
-//	assert.NoError(t, err)
-//	req.Header.Set("Authorization", "Bearer kachny")
-//	router.ServeHTTP(&wrt, req)
-//}
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	api "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
+	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+)
+
+func TestTokenUploader_ShouldUploadWithNoError(t *testing.T) {
+	//given
+	scheme := runtime.NewScheme()
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
+	cntx := context.TODO()
+	tokenData := &api.Token{AccessToken: "2345-2345-2345-234-46456", Username: "jdoe"}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&v1beta1.SPIAccessToken{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "token-123",
+				Namespace: "ns-1",
+			},
+		},
+	).Build()
+
+	strg := tokenstorage.NotifyingTokenStorage{
+		Client: cl,
+		TokenStorage: tokenstorage.TestTokenStorage{
+			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
+				assert.Equal(t, cntx, ctx)
+				assert.Equal(t, "jdoe", data.Username)
+				assert.Equal(t, "2345-2345-2345-234-46456", data.AccessToken)
+				assert.Equal(t, "ns-1", token.Namespace)
+				assert.Equal(t, "token-123", token.Name)
+				return nil
+			},
+		},
+	}
+
+	uploader := SpiTokenUploader{
+		K8sClient: cl,
+		Storage:   strg,
+	}
+
+	//when
+	err := uploader.Upload(cntx, "token-123", "ns-1", tokenData)
+
+	//then
+	if err != nil {
+		t.Fatal("error should not happen", err)
+	}
+}
+
+func TestTokenUploader_ShouldFailTokenNotFound(t *testing.T) {
+	//given
+	scheme := runtime.NewScheme()
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
+	cntx := context.TODO()
+	tokenData := &api.Token{AccessToken: "2345-2345-2345-234-46456", Username: "jdoe"}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&v1beta1.SPIAccessToken{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "token-324",
+				Namespace: "ns-1",
+			},
+		},
+	).Build()
+
+	strg := tokenstorage.NotifyingTokenStorage{
+		Client: cl,
+		TokenStorage: tokenstorage.TestTokenStorage{
+			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
+				assert.Fail(t, "This line should not be reached")
+				return nil
+			},
+		},
+	}
+
+	uploader := SpiTokenUploader{
+		K8sClient: cl,
+		Storage:   strg,
+	}
+	//when
+	err := uploader.Upload(cntx, "token-123", "ns-1", tokenData)
+
+	//then
+	var expectedErrorMsg = "failed to get SPIAccessToken object token-123/ns-1: spiaccesstokens.appstudio.redhat.com \"token-123\" not found"
+	assert.EqualErrorf(t, err, expectedErrorMsg, "Error should be: %v, got: %v", expectedErrorMsg, err)
+
+}
+
+func TestTokenUploader_ShouldFailOnStorage(t *testing.T) {
+	//given
+	scheme := runtime.NewScheme()
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
+	cntx := context.TODO()
+	tokenData := &api.Token{AccessToken: "2345-2345-2345-234-46456", Username: "jdoe"}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&v1beta1.SPIAccessToken{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "token-123",
+				Namespace: "ns-1",
+			},
+		},
+	).Build()
+
+	strg := tokenstorage.NotifyingTokenStorage{
+		Client: cl,
+		TokenStorage: tokenstorage.TestTokenStorage{
+			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
+				return fmt.Errorf("storage disconnected")
+			},
+		},
+	}
+
+	uploader := SpiTokenUploader{
+		K8sClient: cl,
+		Storage:   strg,
+	}
+	//when
+	err := uploader.Upload(cntx, "token-123", "ns-1", tokenData)
+
+	//then
+	var expectedErrorMsg = "failed to store the token data into storage: wrapped storage error: storage disconnected"
+	assert.EqualErrorf(t, err, expectedErrorMsg, "Error should be: %v, got: %v", expectedErrorMsg, err)
+}

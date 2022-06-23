@@ -15,7 +15,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"html/template"
 	"net"
@@ -29,14 +28,12 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/alexflint/go-arg"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zapio"
 	authz "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -67,69 +64,6 @@ func (args *cliArgs) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("api-server", args.ApiServer)
 	enc.AddString("ca-path", args.ApiServerCAPath)
 	return nil
-}
-
-type viewData struct {
-	Title   string
-	Message string
-}
-
-func OkHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-}
-
-func CallbackSuccessHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "static/callback_success.html")
-}
-
-func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	errorMsg := q.Get("error")
-	errorDescription := q.Get("error_description")
-	data := viewData{
-		Title:   errorMsg,
-		Message: errorDescription,
-	}
-	tmpl, _ := template.ParseFiles("static/callback_error.html")
-
-	err := tmpl.Execute(w, data)
-	if err == nil {
-		w.WriteHeader(http.StatusOK)
-	} else {
-		zap.L().Error("failed to process template: %s", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(fmt.Sprintf("Error response returned to OAuth callback: %s. Message: %s ", errorMsg, errorDescription)))
-	}
-
-}
-
-func handleUpload(uploader *controllers.TokenUploader) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := uploader.Handle(r); err != nil {
-			zap.L().Error("error handling token upload", zap.Error(err))
-			switch err.(type) {
-			case *controllers.SPIAccessTokenFetchError:
-			case *controllers.TokenStorageSaveError:
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			case *controllers.JsonParseError:
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			default:
-				if errors.Is(err, controllers.NoBearerTokenError) || errors.Is(err, controllers.EmptyOrOmittedAccessTokenError) {
-					w.WriteHeader(http.StatusBadRequest)
-				} else {
-					w.WriteHeader(http.StatusInternalServerError)
-				}
-			}
-			_, err = w.Write([]byte(err.Error()))
-			if err != nil {
-				zap.L().Error("error recording response error message", zap.Error(err))
-			}
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
-	}
 }
 
 func main() {
@@ -174,13 +108,6 @@ func main() {
 	}
 
 	start(cfg, args.Addr, strings.Split(args.AllowedOrigins, ","), kubeConfig, args.DevMode)
-}
-
-func MiddlewareHandler(allowedOrigins []string, h http.Handler) http.Handler {
-	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel},
-		handlers.CORS(handlers.AllowedOrigins(allowedOrigins),
-			handlers.AllowCredentials(),
-			handlers.AllowedHeaders([]string{"Accept", "Accept-Language", "Content-Language", "Origin", "Authorization"}))(h))
 }
 
 func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeConfig *rest.Config, devmode bool) {
@@ -232,12 +159,12 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	sessionManager.Cookie.Secure = true
 	authenticator := controllers.NewAuthenticator(sessionManager, cl)
 	//static routes first
-	router.HandleFunc("/health", OkHandler).Methods("GET")
-	router.HandleFunc("/ready", OkHandler).Methods("GET")
-	router.HandleFunc("/callback_success", CallbackSuccessHandler).Methods("GET")
+	router.HandleFunc("/health", controllers.OkHandler).Methods("GET")
+	router.HandleFunc("/ready", controllers.OkHandler).Methods("GET")
+	router.HandleFunc("/callback_success", controllers.CallbackSuccessHandler).Methods("GET")
 	router.HandleFunc("/login", authenticator.Login).Methods("POST")
-	router.NewRoute().Path("/{type}/callback").Queries("error", "", "error_description", "").HandlerFunc(CallbackErrorHandler)
-	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(handleUpload(&tokenUploader)).Methods("POST")
+	router.NewRoute().Path("/{type}/callback").Queries("error", "", "error_description", "").HandlerFunc(controllers.CallbackErrorHandler)
+	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(controllers.HandleUpload(&tokenUploader)).Methods("POST")
 
 	redirectTpl, err := template.ParseFiles("static/redirect_notice.html")
 	if err != nil {
@@ -268,7 +195,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      sessionManager.LoadAndSave(MiddlewareHandler(allowedOrigins, router)),
+		Handler:      sessionManager.LoadAndSave(controllers.MiddlewareHandler(allowedOrigins, router)),
 	}
 
 	// Run our server in a goroutine so that it doesn't block.

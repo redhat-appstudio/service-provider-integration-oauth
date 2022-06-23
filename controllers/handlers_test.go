@@ -293,6 +293,67 @@ func TestUploader_FailWithoutAuthorization(t *testing.T) {
 	}
 }
 
+func TestUploader_FailJsonParse(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		&v1beta1.SPIAccessToken{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "umbrella",
+				Namespace: "jdoe",
+			},
+		},
+	).Build()
+
+	strg := tokenstorage.NotifyingTokenStorage{
+		Client: cl,
+		TokenStorage: tokenstorage.TestTokenStorage{
+			StoreImpl: func(ctx context.Context, token *v1beta1.SPIAccessToken, data *v1beta1.Token) error {
+				assert.Equal(t, v1beta1.Token{
+					AccessToken: "42",
+				}, *data)
+				return nil
+			},
+		},
+	}
+
+	uploader := &TokenUploader{
+		K8sClient: cl,
+		Storage:   strg,
+	}
+
+	req, err := http.NewRequest("POST", "/token/jdoe/umbrella", bytes.NewBuffer([]byte(`this is not a json`)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer kachny")
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+	var router = mux.NewRouter()
+	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(HandleUpload(uploader)).Methods("POST")
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	router.ServeHTTP(rr, req)
+	res := rr.Result()
+	defer res.Body.Close()
+	// Check the status code is what we expect.
+
+	if status := res.StatusCode; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var expected = "failed to decode request body as token JSON: invalid character 'h' in literal true (expecting 'r')"
+	if string(data) != expected {
+		t.Errorf("expected '"+expected+"' got '%v'", string(data))
+	}
+}
 func TestMiddlewareHandlerCorsPart(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.

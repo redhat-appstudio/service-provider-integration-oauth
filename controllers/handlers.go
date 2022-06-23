@@ -66,10 +66,10 @@ func HandleUpload(uploader *TokenUploader) func(http.ResponseWriter, *http.Reque
 			case *SPIAccessTokenFetchError:
 			case *TokenStorageSaveError:
 				w.WriteHeader(http.StatusInternalServerError)
-				return
+				break
 			case *JsonParseError:
 				w.WriteHeader(http.StatusBadRequest)
-				return
+				break
 			default:
 				if errors.Is(err, NoBearerTokenError) {
 					w.WriteHeader(http.StatusUnauthorized)
@@ -78,6 +78,7 @@ func HandleUpload(uploader *TokenUploader) func(http.ResponseWriter, *http.Reque
 				} else {
 					w.WriteHeader(http.StatusInternalServerError)
 				}
+				break
 			}
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			_, err = w.Write([]byte(err.Error()))

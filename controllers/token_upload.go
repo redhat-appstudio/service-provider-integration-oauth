@@ -22,10 +22,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// TokenUploader is used to permanently persist credentials for the given token.
 type TokenUploader interface {
 	Upload(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error
 }
 
+// UploadFunc used to provide anonymous implementation of TokenUploader.
+// Example:
+//  uploader := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+//		return fmt.Errorf("failed to store the token data into storage")
+//	})
 type UploadFunc func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error
 
 func (u UploadFunc) Upload(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {

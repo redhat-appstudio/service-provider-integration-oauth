@@ -40,7 +40,7 @@ type SpiTokenUploader struct {
 func (u *SpiTokenUploader) Upload(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
 	token := &api.SPIAccessToken{}
 	if err := u.K8sClient.Get(ctx, client.ObjectKey{Name: tokenObjectName, Namespace: tokenObjectNamespace}, token); err != nil {
-		return fmt.Errorf("failed to get SPIAccessToken object %s/%s: %w", tokenObjectName, tokenObjectNamespace, err)
+		return fmt.Errorf("failed to get SPIAccessToken object %s/%s: %w", tokenObjectNamespace, tokenObjectName, err)
 	}
 
 	if err := u.Storage.Store(ctx, token, data); err != nil {

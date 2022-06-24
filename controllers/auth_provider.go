@@ -15,6 +15,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -26,6 +27,10 @@ import (
 )
 
 const authPluginName = "spi.appstudio.redhat.com/auth-from-request"
+
+var (
+	noBearerTokenError = errors.New("no bearer token found")
+)
 
 func init() {
 	utilruntime.Must(rest.RegisterAuthProviderPlugin(authPluginName, func(string, map[string]string, rest.AuthProviderConfigPersister) (rest.AuthProvider, error) {
@@ -65,7 +70,7 @@ func WithAuthFromRequestIntoContext(r *http.Request, ctx context.Context) (conte
 	token := ExtractTokenFromAuthorizationHeader(r.Header.Get("Authorization"))
 
 	if token == "" {
-		return nil, NoBearerTokenError
+		return nil, noBearerTokenError
 	}
 
 	return WithAuthIntoContext(token, ctx), nil

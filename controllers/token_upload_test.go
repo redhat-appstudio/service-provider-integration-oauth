@@ -104,7 +104,7 @@ func TestTokenUploader_ShouldFailTokenNotFound(t *testing.T) {
 	err := uploader.Upload(cntx, "token-123", "ns-1", tokenData)
 
 	//then
-	var expectedErrorMsg = "failed to get SPIAccessToken object token-123/ns-1: spiaccesstokens.appstudio.redhat.com \"token-123\" not found"
+	var expectedErrorMsg = "failed to get SPIAccessToken object ns-1/token-123: spiaccesstokens.appstudio.redhat.com \"token-123\" not found"
 	assert.EqualErrorf(t, err, expectedErrorMsg, "Error should be: %v, got: %v", expectedErrorMsg, err)
 
 }

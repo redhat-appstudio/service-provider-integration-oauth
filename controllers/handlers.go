@@ -26,19 +26,28 @@ import (
 	"go.uber.org/zap/zapio"
 )
 
+// OkHandler is a Handler implementation that responds only with http.StatusOK.
+// Typically, used for liveness and readiness probes
 func OkHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// CallbackSuccessHandler is a Handler implementation that responds with HTML page
+// This page is a landing page after successfully completing the OAuth flow.
+// Resource file location is prefixed with `../` to be compatible with tests running locally.
 func CallbackSuccessHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "../static/callback_success.html")
 }
 
+// viewData structure is used to pass parameters during callback_error.html template processing.
 type viewData struct {
 	Title   string
 	Message string
 }
 
+// CallbackErrorHandler is a Handler implementation that responds with HTML page
+// This page is a landing page after unsuccessfully completing the OAuth flow.
+// Resource file location is prefixed with `../` to be compatible with tests running locally.
 func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	errorMsg := q.Get("error")
@@ -60,6 +69,8 @@ func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// HandleUpload is a Handler implementation that is used to explicitly upload credentials
+// for some concrete SPIAccessToken.
 func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, err := WithAuthFromRequestIntoContext(r, r.Context())
@@ -96,6 +107,10 @@ func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Reques
 	}
 }
 
+// MiddlewareHandler is a Handler that composed couple of different responsibilities.
+// Like:
+// - Request logging
+// - CORS processing
 func MiddlewareHandler(allowedOrigins []string, h http.Handler) http.Handler {
 	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel},
 		handlers.CORS(handlers.AllowedOrigins(allowedOrigins),

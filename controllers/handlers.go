@@ -69,7 +69,7 @@ func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// HandleUpload is a Handler implementation that is used to explicitly upload credentials
+// HandleUpload returns Handler implementation that is relied on provided TokenUploader to persist provided credentials
 // for some concrete SPIAccessToken.
 func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -38,6 +38,9 @@ func (u UploadFunc) Upload(ctx context.Context, tokenObjectName string, tokenObj
 	return u(ctx, tokenObjectName, tokenObjectNamespace, data)
 }
 
+// This variable is a guard to ensure that UploadFunc actually satisfies the TokenUploader interface
+var _ TokenUploader = (UploadFunc)(nil)
+
 type SpiTokenUploader struct {
 	K8sClient client.Client
 	Storage   tokenstorage.TokenStorage

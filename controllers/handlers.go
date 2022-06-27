@@ -84,7 +84,7 @@ func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Reques
 		tokenObjectNamespace := vars["namespace"]
 
 		if len(tokenObjectName) < 1 || len(tokenObjectNamespace) < 1 {
-			LogAndWriteResponse(w, http.StatusInternalServerError, "Incorrect service deployment. Token name and namespace can't be omitted or empty.")
+			LogDebugAndWriteResponse(w, http.StatusInternalServerError, "Incorrect service deployment. Token name and namespace can't be omitted or empty.")
 			return
 		}
 
@@ -95,7 +95,7 @@ func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Reques
 		}
 
 		if data.AccessToken == "" {
-			LogAndWriteResponse(w, http.StatusBadRequest, "access token can't be omitted or empty")
+			LogDebugAndWriteResponse(w, http.StatusBadRequest, "access token can't be omitted or empty")
 			return
 		}
 

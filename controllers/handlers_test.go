@@ -145,9 +145,9 @@ func TestUploaderOk(t *testing.T) {
 	router.ServeHTTP(rr, req)
 
 	// Check the status code is what we expect.
-	if status := rr.Code; status != http.StatusAccepted {
+	if status := rr.Code; status != http.StatusNoContent {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusAccepted)
+			status, http.StatusNoContent)
 	}
 }
 

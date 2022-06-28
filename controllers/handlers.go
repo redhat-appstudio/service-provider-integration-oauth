@@ -103,7 +103,7 @@ func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Reques
 			LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to upload the token", err)
 			return
 		}
-		w.WriteHeader(http.StatusAccepted)
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

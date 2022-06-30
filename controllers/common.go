@@ -46,6 +46,7 @@ type commonController struct {
 	BaseUrl          string
 	RedirectTemplate *template.Template
 	Authenticator    *Authenticator
+	StateStorage     *StateStorage
 }
 
 // exchangeState is the state that we're sending out to the SP after checking the anonymous oauth state produced by
@@ -111,7 +112,11 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		LogDebugAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
 		return
 	}
-
+	newStateString, err := c.StateStorage.VeilRealState(r)
+	if err != nil {
+		LogErrorAndWriteResponse(w, http.StatusBadRequest, err.Error(), err)
+		return
+	}
 	keyedState := exchangeState{
 		AnonymousOAuthState: state,
 	}
@@ -123,7 +128,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	templateData := struct {
 		Url string
 	}{
-		Url: oauthCfg.AuthCodeURL(stateString),
+		Url: oauthCfg.AuthCodeURL(newStateString),
 	}
 	zap.L().Info("Redirecting ", zap.String("url", templateData.Url))
 	err = c.RedirectTemplate.Execute(w, templateData)
@@ -136,7 +141,6 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 
 func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	zap.L().Debug("/callback")
-
 	exchange, err := c.finishOAuthExchange(ctx, r, c.Endpoint)
 	if err != nil {
 		LogErrorAndWriteResponse(w, http.StatusBadRequest, "error in Service Provider token exchange", err)
@@ -169,7 +173,10 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	// TODO support the implicit flow here, too?
 
 	// check that the state is correct
-	stateString := r.FormValue("state")
+	stateString, err := c.StateStorage.UnveilState(r)
+	if err != nil {
+		return exchangeResult{result: oauthFinishError}, err
+	}
 	codec, err := oauthstate.NewCodec(c.JwtSigningSecret)
 	if err != nil {
 		return exchangeResult{result: oauthFinishError}, fmt.Errorf("failed to create JWT codec: %w", err)

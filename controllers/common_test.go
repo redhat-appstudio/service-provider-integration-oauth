@@ -87,7 +87,6 @@ var _ = Describe("Controller", func() {
 	prepareController := func(g Gomega) *commonController {
 		tmpl, err := template.ParseFiles("../static/redirect_notice.html")
 		g.Expect(err).NotTo(HaveOccurred())
-
 		return &commonController{
 			Config: config.ServiceProviderConfiguration{
 				ClientId:            "clientId",
@@ -105,6 +104,7 @@ var _ = Describe("Controller", func() {
 			BaseUrl:          "https://spi.on.my.machine",
 			Authenticator:    prepareAuthenticator(g),
 			RedirectTemplate: tmpl,
+			StateStorage:     NewStateStorage(IT.SessionManager),
 		}
 	}
 

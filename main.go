@@ -158,6 +158,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	sessionManager.Cookie.SameSite = http.SameSiteNoneMode
 	sessionManager.Cookie.Secure = true
 	authenticator := controllers.NewAuthenticator(sessionManager, cl)
+	stateStorage := controllers.NewStateStorage(sessionManager)
 	//static routes first
 	router.HandleFunc("/health", controllers.OkHandler).Methods("GET")
 	router.HandleFunc("/ready", controllers.OkHandler).Methods("GET")
@@ -175,7 +176,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 	for _, sp := range cfg.ServiceProviders {
 		zap.L().Debug("initializing service provider controller", zap.String("type", string(sp.ServiceProviderType)), zap.String("url", sp.ServiceProviderBaseUrl))
 
-		controller, err := controllers.FromConfiguration(cfg, sp, authenticator, cl, strg, redirectTpl)
+		controller, err := controllers.FromConfiguration(cfg, sp, authenticator, stateStorage, cl, strg, redirectTpl)
 		if err != nil {
 			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
 		}

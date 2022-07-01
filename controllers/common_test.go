@@ -282,7 +282,7 @@ var _ = Describe("Controller", func() {
 					Expiry:       time.Now(),
 				})
 				serviceProviderReached := false
-				ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
+				ctxVal := &http.Client{
 					Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
 						if strings.HasPrefix(r.URL.String(), "https://special.sp") {
 							serviceProviderReached = true
@@ -296,10 +296,10 @@ var _ = Describe("Controller", func() {
 
 						return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
 					}),
-				})
+				}
 
 				IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					controller.Callback(ctx, w, r)
+					controller.Callback(context.WithValue(r.Context(), oauth2.HTTPClient, ctxVal), w, r)
 				})).ServeHTTP(res, req)
 
 				g.Expect(res.Code).To(Equal(http.StatusFound))
@@ -336,7 +336,7 @@ var _ = Describe("Controller", func() {
 					RefreshToken: "refresh",
 					Expiry:       time.Now(),
 				})
-				ctx := context.WithValue(context.TODO(), oauth2.HTTPClient, &http.Client{
+				ctxVal := &http.Client{
 					Transport: fakeRoundTrip(func(r *http.Request) (*http.Response, error) {
 						if strings.HasPrefix(r.URL.String(), "https://special.sp") {
 							return &http.Response{
@@ -349,10 +349,10 @@ var _ = Describe("Controller", func() {
 
 						return nil, fmt.Errorf("unexpected request to: %s", r.URL.String())
 					}),
-				})
+				}
 
 				IT.SessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					controller.Callback(ctx, w, r)
+					controller.Callback(context.WithValue(r.Context(), oauth2.HTTPClient, ctxVal), w, r)
 				})).ServeHTTP(res, req)
 
 				g.Expect(res.Code).To(Equal(http.StatusFound))

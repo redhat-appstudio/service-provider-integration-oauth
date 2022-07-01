@@ -173,7 +173,7 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	// TODO support the implicit flow here, too?
 
 	// check that the state is correct
-	stateString, err := c.StateStorage.UnveilState(r)
+	stateString, err := c.StateStorage.UnveilState(ctx, r)
 	if err != nil {
 		return exchangeResult{result: oauthFinishError}, err
 	}

@@ -86,7 +86,7 @@ func Test_ShouldUnveilState(t *testing.T) {
 
 	//when
 	sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		originalSpiState, err := storage.UnveilState(r)
+		originalSpiState, err := storage.UnveilState(r.Context(), r)
 		assert.NoError(t, err)
 		assert.Equal(t, spiState, originalSpiState)
 
@@ -108,7 +108,7 @@ func Test_FailToUnveilStateIfStateIsEmpty(t *testing.T) {
 
 	//when
 	sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		newStateString, err := storage.UnveilState(r)
+		newStateString, err := storage.UnveilState(r.Context(), r)
 		if assert.Error(t, err) {
 			assert.Equal(t, errors.New("request has no `state` parameter"), err)
 		}

@@ -14,6 +14,7 @@
 package controllers
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -48,13 +49,13 @@ func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
 	return newState, nil
 }
 
-func (storage StateStorage) UnveilState(req *http.Request) (string, error) {
+func (storage StateStorage) UnveilState(ctx context.Context, req *http.Request) (string, error) {
 	state := req.URL.Query().Get("state")
 	if state == "" {
 		zap.L().Error("Request has no state parameter")
 		return "", errors.New("request has no `state` parameter")
 	}
-	unveiledState := storage.sessionManager.GetString(req.Context(), state)
+	unveiledState := storage.sessionManager.GetString(ctx, state)
 	zap.L().Debug("State unveiled", zap.String("veil", state), zap.String("unveiledState", unveiledState))
 	return unveiledState, nil
 }

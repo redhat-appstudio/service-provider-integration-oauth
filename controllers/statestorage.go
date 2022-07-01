@@ -15,20 +15,20 @@ package controllers
 
 import (
 	"errors"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/alexedwards/scs/v2"
+	"github.com/brianvoe/gofakeit/v6"
 	"go.uber.org/zap"
 )
 
 type StateStorage struct {
-	SessionManager *scs.SessionManager
+	sessionManager *scs.SessionManager
 }
 
-const (
-	letterBytes = "abcdefghijklmnopqrstuvwxyz1234567890"
+var (
+	// Uses math/rand(Pseudo) with mutex locking
+	faker = gofakeit.NewCrypto()
 )
 
 func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
@@ -37,9 +37,9 @@ func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
 		zap.L().Error("Request has no state parameter")
 		return "", errors.New("request has no `state` parameter")
 	}
-	newState := randStringBytes(32)
+	newState := faker.Regex("([0-9a-z]){32}")
 	zap.L().Debug("State veiled", zap.String("state", state), zap.String("veil", newState))
-	storage.SessionManager.Put(req.Context(), newState, state)
+	storage.sessionManager.Put(req.Context(), newState, state)
 	return newState, nil
 }
 
@@ -49,22 +49,13 @@ func (storage StateStorage) UnveilState(req *http.Request) (string, error) {
 		zap.L().Error("Request has no state parameter")
 		return "", errors.New("request has no `state` parameter")
 	}
-	unveiledState := storage.SessionManager.GetString(req.Context(), state)
+	unveiledState := storage.sessionManager.GetString(req.Context(), state)
 	zap.L().Debug("State unveiled", zap.String("veil", state), zap.String("unveiledState", unveiledState))
 	return unveiledState, nil
 }
 
-func randStringBytes(n int) string {
-	rand.Seed(time.Now().UnixNano())
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
-}
-
 func NewStateStorage(sessionManager *scs.SessionManager) *StateStorage {
 	return &StateStorage{
-		SessionManager: sessionManager,
+		sessionManager: sessionManager,
 	}
 }

@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/alexedwards/scs/v2 v2.5.0
 	github.com/alexflint/go-arg v1.4.3
+	github.com/brianvoe/gofakeit/v6 v6.17.0
 	github.com/go-jose/go-jose/v3 v3.0.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0

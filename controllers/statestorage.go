@@ -17,7 +17,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"math/big"
 	"net/http"
 
@@ -29,6 +28,11 @@ type StateStorage struct {
 	sessionManager *scs.SessionManager
 }
 
+var (
+	noStateError                = errors.New("request has no `state` parameter")
+	randomStringGenerationError = errors.New("not able to generate new random string")
+)
+
 const (
 	letterBytes = "abcdefghijklmnopqrstuvwxyz1234567890"
 )
@@ -37,7 +41,7 @@ func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
 	state := req.URL.Query().Get("state")
 	if state == "" {
 		zap.L().Error("Request has no state parameter")
-		return "", errors.New("request has no `state` parameter")
+		return "", noStateError
 	}
 	newState, err := randStringBytes(32)
 	if err != nil {
@@ -53,7 +57,7 @@ func (storage StateStorage) UnveilState(ctx context.Context, req *http.Request) 
 	state := req.URL.Query().Get("state")
 	if state == "" {
 		zap.L().Error("Request has no state parameter")
-		return "", errors.New("request has no `state` parameter")
+		return "", noStateError
 	}
 	unveiledState := storage.sessionManager.GetString(ctx, state)
 	zap.L().Debug("State unveiled", zap.String("veil", state), zap.String("unveiledState", unveiledState))
@@ -65,7 +69,7 @@ func randStringBytes(n int) (string, error) {
 	for i := range b {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterBytes))))
 		if err != nil {
-			return "", fmt.Errorf("not able to generate new random string")
+			return "", randomStringGenerationError
 
 		}
 		b[i] = letterBytes[n.Uint64()]

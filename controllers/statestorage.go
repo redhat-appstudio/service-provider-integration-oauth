@@ -14,10 +14,11 @@
 package controllers
 
 import (
+	"crypto/rand"
 	"errors"
-	"math/rand"
+	"fmt"
+	"math/big"
 	"net/http"
-	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"go.uber.org/zap"
@@ -37,7 +38,11 @@ func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
 		zap.L().Error("Request has no state parameter")
 		return "", errors.New("request has no `state` parameter")
 	}
-	newState := randStringBytes(32)
+	newState, err := randStringBytes(32)
+	if err != nil {
+
+		return "", err
+	}
 	zap.L().Debug("State veiled", zap.String("state", state), zap.String("veil", newState))
 	storage.sessionManager.Put(req.Context(), newState, state)
 	return newState, nil
@@ -54,13 +59,17 @@ func (storage StateStorage) UnveilState(req *http.Request) (string, error) {
 	return unveiledState, nil
 }
 
-func randStringBytes(n int) string {
-	rand.Seed(time.Now().UnixNano())
+func randStringBytes(n int) (string, error) {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterBytes))))
+		if err != nil {
+			return "", fmt.Errorf("not able to generate new random string")
+
+		}
+		b[i] = letterBytes[n.Uint64()]
 	}
-	return string(b)
+	return string(b), nil
 }
 
 func NewStateStorage(sessionManager *scs.SessionManager) *StateStorage {

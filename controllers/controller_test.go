@@ -15,9 +15,10 @@ package controllers
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestMain(m *testing.M) {

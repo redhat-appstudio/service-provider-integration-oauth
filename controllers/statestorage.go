@@ -15,10 +15,11 @@ package controllers
 
 import (
 	"errors"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
-	"github.com/brianvoe/gofakeit/v6"
 	"go.uber.org/zap"
 )
 
@@ -26,9 +27,8 @@ type StateStorage struct {
 	sessionManager *scs.SessionManager
 }
 
-var (
-	// Uses math/rand(Pseudo) with mutex locking
-	faker = gofakeit.NewCrypto()
+const (
+	letterBytes = "abcdefghijklmnopqrstuvwxyz1234567890"
 )
 
 func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
@@ -37,7 +37,7 @@ func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
 		zap.L().Error("Request has no state parameter")
 		return "", errors.New("request has no `state` parameter")
 	}
-	newState := faker.Regex("([0-9a-z]){32}")
+	newState := randStringBytes(32)
 	zap.L().Debug("State veiled", zap.String("state", state), zap.String("veil", newState))
 	storage.sessionManager.Put(req.Context(), newState, state)
 	return newState, nil
@@ -52,6 +52,15 @@ func (storage StateStorage) UnveilState(req *http.Request) (string, error) {
 	unveiledState := storage.sessionManager.GetString(req.Context(), state)
 	zap.L().Debug("State unveiled", zap.String("veil", state), zap.String("unveiledState", unveiledState))
 	return unveiledState, nil
+}
+
+func randStringBytes(n int) string {
+	rand.Seed(time.Now().UnixNano())
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
 
 func NewStateStorage(sessionManager *scs.SessionManager) *StateStorage {

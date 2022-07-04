@@ -57,9 +57,7 @@ func Test_FailToVeilIfStateIsEmpty(t *testing.T) {
 	//when
 	sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		newStateString, err := storage.VeilRealState(r)
-		if assert.Error(t, err) {
-			assert.Equal(t, errors.New("request has no `state` parameter"), err)
-		}
+		assert.True(t, errors.Is(err, noStateError))
 		assert.Empty(t, newStateString)
 
 	})).ServeHTTP(res, req)
@@ -109,9 +107,7 @@ func Test_FailToUnveilStateIfStateIsEmpty(t *testing.T) {
 	//when
 	sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		newStateString, err := storage.UnveilState(r.Context(), r)
-		if assert.Error(t, err) {
-			assert.Equal(t, errors.New("request has no `state` parameter"), err)
-		}
+		assert.True(t, errors.Is(err, noStateError))
 		assert.Empty(t, newStateString)
 
 	})).ServeHTTP(res, req)

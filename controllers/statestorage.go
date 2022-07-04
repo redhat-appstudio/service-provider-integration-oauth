@@ -37,7 +37,7 @@ const (
 	letterBytes = "abcdefghijklmnopqrstuvwxyz1234567890"
 )
 
-func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
+func (s StateStorage) VeilRealState(req *http.Request) (string, error) {
 	state := req.URL.Query().Get("state")
 	if state == "" {
 		zap.L().Error("Request has no state parameter")
@@ -49,17 +49,17 @@ func (storage StateStorage) VeilRealState(req *http.Request) (string, error) {
 		return "", err
 	}
 	zap.L().Debug("State veiled", zap.String("state", state), zap.String("veil", newState))
-	storage.sessionManager.Put(req.Context(), newState, state)
+	s.sessionManager.Put(req.Context(), newState, state)
 	return newState, nil
 }
 
-func (storage StateStorage) UnveilState(ctx context.Context, req *http.Request) (string, error) {
+func (s StateStorage) UnveilState(ctx context.Context, req *http.Request) (string, error) {
 	state := req.URL.Query().Get("state")
 	if state == "" {
 		zap.L().Error("Request has no state parameter")
 		return "", noStateError
 	}
-	unveiledState := storage.sessionManager.GetString(ctx, state)
+	unveiledState := s.sessionManager.GetString(ctx, state)
 	zap.L().Debug("State unveiled", zap.String("veil", state), zap.String("unveiledState", unveiledState))
 	return unveiledState, nil
 }

@@ -175,7 +175,7 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	// check that the state is correct
 	stateString, err := c.StateStorage.UnveilState(ctx, r)
 	if err != nil {
-		return exchangeResult{result: oauthFinishError}, err
+		return exchangeResult{result: oauthFinishError}, fmt.Errorf("failed to unveil token state: %w", err)
 	}
 	codec, err := oauthstate.NewCodec(c.JwtSigningSecret)
 	if err != nil {

@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
+
 	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
@@ -33,7 +35,6 @@ import (
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	authz "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -46,54 +47,28 @@ import (
 )
 
 type cliArgs struct {
-	ConfigFile      string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
-	Addr            string `arg:"-a, --addr, env" default:"0.0.0.0:8000" help:"Address to listen on"`
-	AllowedOrigins  string `arg:"-o, --allowed-origins, env" default:"https://console.dev.redhat.com,https://prod.foo.redhat.com:1337" help:"Comma-separated list of domains allowed for cross-domain requests"`
-	DevMode         bool   `arg:"-d, --dev-mode, env" default:"false" help:"use dev-mode logging"`
-	KubeConfig      string `arg:"-k, --kubeconfig, env" default:"" help:""`
-	ApiServer       string `arg:"-a, --api-server, env:API_SERVER" default:"" help:"host:port of the Kubernetes API server to use when handling HTTP requests"`
-	ApiServerCAPath string `arg:"-t, --ca-path, env:API_SERVER_CA_PATH" default:"" help:"the path to the CA certificate to use when connecting to the Kubernetes API server"`
-}
-
-func (args *cliArgs) MarshalLogObject(enc zapcore.ObjectEncoder) error {
-	enc.AddString("config-file", args.ConfigFile)
-	enc.AddString("addr", args.Addr)
-	enc.AddString("allowed-origins", args.AllowedOrigins)
-	enc.AddBool("dev-mode", args.DevMode)
-	enc.AddString("kubeconfig", args.KubeConfig)
-	enc.AddString("api-server", args.ApiServer)
-	enc.AddString("ca-path", args.ApiServerCAPath)
-	return nil
+	ConfigFile         string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
+	ServiceAddr        string `arg:"-b, --service-addr, env" default:"0.0.0.0:8000" help:"Service address to listen on"`
+	AllowedOrigins     string `arg:"-o, --allowed-origins, env" default:"https://console.dev.redhat.com,https://prod.foo.redhat.com:1337" help:"Comma-separated list of domains allowed for cross-domain requests"`
+	KubeConfig         string `arg:"-k, --kubeconfig, env" default:"" help:""`
+	KubeInsecureTLS    bool   `arg:"-f, --kube-insecure-tls, env" default:"false" help:"Whether is allowed or not insecure kubernetes tls connection."`
+	ApiServer          string `arg:"-a, --api-server, env:API_SERVER" default:"" help:"host:port of the Kubernetes API server to use when handling HTTP requests"`
+	ApiServerCAPath    string `arg:"-t, --ca-path, env:API_SERVER_CA_PATH" default:"" help:"the path to the CA certificate to use when connecting to the Kubernetes API server"`
+	VaultInsecureTLS   bool   `arg:"-i, --vault-insecure-tls, env" default:"false" help:"Whether is allowed or not insecure vault tls connection."`
+	ZapDevel           bool   `arg:"-d, --zap-devel, env" default:"false" help:"Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn) Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error)"`
+	ZapEncoder         string `arg:"-e, --zap-encoder, env" default:"" help:"Zap log encoding (‘json’ or ‘console’)"`
+	ZapLogLevel        string `arg:"-v, --zap-log-level, env" default:"" help:"Zap Level to configure the verbosity of logging"`
+	ZapStackTraceLevel string `arg:"-s, --zap-stacktrace-level, env" default:"" help:"Zap Level at and above which stacktraces are captured"`
+	ZapTimeEncoding    string `arg:"-t, --zap-time-encoding, env" default:"rfc3339" help:"one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'"`
 }
 
 func main() {
 	args := cliArgs{}
 	arg.MustParse(&args)
 
-	var loggerConfig zap.Config
-	if args.DevMode {
-		loggerConfig = zap.NewDevelopmentConfig()
-	} else {
-		loggerConfig = zap.NewProductionConfig()
-	}
-	loggerConfig.OutputPaths = []string{"stdout"}
-	loggerConfig.ErrorOutputPaths = []string{"stdout"}
-	logger, err := loggerConfig.Build()
-	if err != nil {
-		// there's nothing we can do about the error to print to stderr, but the linter requires us to at least pretend
-		_, _ = fmt.Fprintf(os.Stderr, "failed to initialize logging: %s", err.Error())
-		os.Exit(1)
-	}
-	defer func() {
-		// linter says we need to handle the error from this call, but this is called after main with no way of us doing
-		// anything about the error. So the anon func and this assignment is here purely to make the linter happy.
-		_ = logger.Sync()
-	}()
+	logs.InitLoggers(args.ZapDevel, args.ZapEncoder, args.ZapLogLevel, args.ZapStackTraceLevel, args.ZapTimeEncoding)
 
-	undo := zap.ReplaceGlobals(logger)
-	defer undo()
-
-	zap.L().Info("Starting OAuth service with environment", zap.Strings("env", os.Environ()), zap.Object("configuration", &args))
+	zap.L().Info("Starting OAuth service with environment", zap.Strings("env", os.Environ()), zap.Any("configuration", &args))
 
 	cfg, err := config.LoadFrom(args.ConfigFile)
 	if err != nil {
@@ -107,14 +82,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	start(cfg, args.Addr, strings.Split(args.AllowedOrigins, ","), kubeConfig, args.DevMode)
-}
-
-func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeConfig *rest.Config, devmode bool) {
 	router := mux.NewRouter()
 
 	// insecure mode only allowed when the trusted root certificate is not specified...
-	if devmode && kubeConfig.TLSClientConfig.CAFile == "" {
+	if args.KubeInsecureTLS && kubeConfig.TLSClientConfig.CAFile == "" {
 		kubeConfig.Insecure = true
 	}
 
@@ -136,7 +107,7 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 		return
 	}
 
-	strg, err := tokenstorage.NewVaultStorage("spi-oauth", cfg.VaultHost, cfg.ServiceAccountTokenFilePath, devmode)
+	strg, err := tokenstorage.NewVaultStorage("spi-oauth", cfg.VaultHost, cfg.ServiceAccountTokenFilePath, args.VaultInsecureTLS)
 	if err != nil {
 		zap.L().Error("failed to create token storage interface", zap.Error(err))
 		return
@@ -189,14 +160,14 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 		})).Methods("GET")
 	}
 
-	zap.L().Info("Starting the server", zap.String("Addr", addr))
+	zap.L().Info("Starting the server", zap.String("Addr", args.ServiceAddr))
 	server := &http.Server{
-		Addr: addr,
+		Addr: args.ServiceAddr,
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      sessionManager.LoadAndSave(controllers.MiddlewareHandler(allowedOrigins, router)),
+		Handler:      sessionManager.LoadAndSave(controllers.MiddlewareHandler(strings.Split(args.AllowedOrigins, ","), router)),
 	}
 
 	// Run our server in a goroutine so that it doesn't block.
@@ -205,14 +176,14 @@ func start(cfg config.Configuration, addr string, allowedOrigins []string, kubeC
 			zap.L().Error("failed to start the HTTP server", zap.Error(err))
 		}
 	}()
-
+	zap.L().Info("Server is up and running")
 	// Setting up signal capturing
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
 	// Waiting for SIGINT (kill -2)
 	<-stop
-
+	zap.L().Info("Server got interrupt signal, going to gracefully shutdown the server", zap.Any("signal", stop))
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

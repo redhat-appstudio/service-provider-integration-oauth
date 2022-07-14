@@ -112,7 +112,7 @@ func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Reques
 // - Request logging
 // - CORS processing
 func MiddlewareHandler(allowedOrigins []string, h http.Handler) http.Handler {
-	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.InfoLevel},
+	return handlers.LoggingHandler(&zapio.Writer{Log: zap.L(), Level: zap.DebugLevel},
 		handlers.CORS(handlers.AllowedOrigins(allowedOrigins),
 			handlers.AllowCredentials(),
 			handlers.AllowedHeaders([]string{"Accept", "Accept-Language", "Content-Language", "Origin", "Authorization"}))(h))

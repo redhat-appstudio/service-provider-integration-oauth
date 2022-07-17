@@ -47,19 +47,25 @@ import (
 )
 
 type cliArgs struct {
-	ConfigFile         string `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
-	ServiceAddr        string `arg:"-b, --service-addr, env" default:"0.0.0.0:8000" help:"Service address to listen on"`
-	AllowedOrigins     string `arg:"-o, --allowed-origins, env" default:"https://console.dev.redhat.com,https://prod.foo.redhat.com:1337" help:"Comma-separated list of domains allowed for cross-domain requests"`
-	KubeConfig         string `arg:"-k, --kubeconfig, env" default:"" help:""`
-	KubeInsecureTLS    bool   `arg:"-f, --kube-insecure-tls, env" default:"false" help:"Whether is allowed or not insecure kubernetes tls connection."`
-	ApiServer          string `arg:"-a, --api-server, env:API_SERVER" default:"" help:"host:port of the Kubernetes API server to use when handling HTTP requests"`
-	ApiServerCAPath    string `arg:"-t, --ca-path, env:API_SERVER_CA_PATH" default:"" help:"the path to the CA certificate to use when connecting to the Kubernetes API server"`
-	VaultInsecureTLS   bool   `arg:"-i, --vault-insecure-tls, env" default:"false" help:"Whether is allowed or not insecure vault tls connection."`
-	ZapDevel           bool   `arg:"-d, --zap-devel, env" default:"false" help:"Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn) Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error)"`
-	ZapEncoder         string `arg:"-e, --zap-encoder, env" default:"" help:"Zap log encoding (‘json’ or ‘console’)"`
-	ZapLogLevel        string `arg:"-v, --zap-log-level, env" default:"" help:"Zap Level to configure the verbosity of logging"`
-	ZapStackTraceLevel string `arg:"-s, --zap-stacktrace-level, env" default:"" help:"Zap Level at and above which stacktraces are captured"`
-	ZapTimeEncoding    string `arg:"-t, --zap-time-encoding, env" default:"rfc3339" help:"one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'"`
+	ConfigFile                     string                       `arg:"-c, --config-file, env" default:"/etc/spi/config.yaml" help:"The location of the configuration file"`
+	ServiceAddr                    string                       `arg:"-b, --service-addr, env" default:"0.0.0.0:8000" help:"Service address to listen on"`
+	AllowedOrigins                 string                       `arg:"-o, --allowed-origins, env" default:"https://console.dev.redhat.com,https://prod.foo.redhat.com:1337" help:"Comma-separated list of domains allowed for cross-domain requests"`
+	KubeConfig                     string                       `arg:"-k, --kubeconfig, env" default:"" help:""`
+	KubeInsecureTLS                bool                         `arg:"-f, --kube-insecure-tls, env" default:"false" help:"Whether is allowed or not insecure kubernetes tls connection."`
+	ApiServer                      string                       `arg:"-a, --api-server, env:API_SERVER" default:"" help:"host:port of the Kubernetes API server to use when handling HTTP requests"`
+	ApiServerCAPath                string                       `arg:"-t, --ca-path, env:API_SERVER_CA_PATH" default:"" help:"the path to the CA certificate to use when connecting to the Kubernetes API server"`
+	VaultHost                      string                       `arg:"--vault-host, env" default:"http://spi-vault:8200" help:"Vault host URL. Default is internal kubernetes service."`
+	VaultInsecureTLS               bool                         `arg:"-i, --vault-insecure-tls, env" default:"false" help:"Whether is allowed or not insecure vault tls connection."`
+	VaultAuthMethod                tokenstorage.VaultAuthMethod `arg:"--vault-auth-method, env" default:"kubernetes" help:"Authentication method to Vault token storage. Options: 'kubernetes', 'approle'."`
+	VaultApproleRoleIdFilePath     string                       `arg:"--vault-roleid-filepath, env" default:"/etc/spi/role_id" help:"Used with Vault approle authentication. Filepath with role_id."`
+	VaultApproleSecretIdFilePath   string                       `arg:"--vault-secretid-filepath, env" default:"/etc/spi/secret_id" help:"Used with Vault approle authentication. Filepath with secret_id."`
+	VaultKubernetesSATokenFilePath string                       `arg:"--vault-k8s-sa-token-filepath, env" help:"Used with Vault kubernetes authentication. Filepath to kubernetes ServiceAccount token. When empty, Vault configuration uses default k8s path. No need to set when running in k8s deployment, useful mostly for local development."`
+	VaultKubernetesRole            string                       `arg:"--vault-k8s-role, env" default:"spi-oauth" help:"Used with Vault kubernetes authentication. Vault authentication role set for k8s ServiceAccount."`
+	ZapDevel                       bool                         `arg:"-d, --zap-devel, env" default:"false" help:"Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn) Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error)"`
+	ZapEncoder                     string                       `arg:"-e, --zap-encoder, env" default:"" help:"Zap log encoding (‘json’ or ‘console’)"`
+	ZapLogLevel                    string                       `arg:"-v, --zap-log-level, env" default:"" help:"Zap Level to configure the verbosity of logging"`
+	ZapStackTraceLevel             string                       `arg:"-s, --zap-stacktrace-level, env" default:"" help:"Zap Level at and above which stacktraces are captured"`
+	ZapTimeEncoding                string                       `arg:"-t, --zap-time-encoding, env" default:"rfc3339" help:"one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'"`
 }
 
 func main() {
@@ -107,7 +113,17 @@ func main() {
 		return
 	}
 
-	strg, err := tokenstorage.NewVaultStorage("spi-oauth", cfg.VaultHost, cfg.ServiceAccountTokenFilePath, args.VaultInsecureTLS)
+	var vaultTokenStorageConfig *tokenstorage.VaultStorageConfig
+	if args.VaultAuthMethod == tokenstorage.VaultAuthMethodKubernetes {
+		vaultTokenStorageConfig = tokenstorage.KubernetesAuthConfig(args.VaultHost, args.VaultKubernetesRole, args.VaultKubernetesSATokenFilePath, args.VaultInsecureTLS)
+	} else if args.VaultAuthMethod == tokenstorage.VaultAuthMethodApprole {
+		vaultTokenStorageConfig = tokenstorage.ApproleAuthConfig(args.VaultHost, args.VaultApproleRoleIdFilePath, args.VaultApproleSecretIdFilePath, args.VaultInsecureTLS)
+	} else {
+		zap.L().Error(fmt.Sprintf("failed to initialize the token storage, unknown vault auth type '%s'", args.VaultAuthMethod))
+		return
+	}
+
+	strg, err := tokenstorage.NewVaultStorage(vaultTokenStorageConfig)
 	if err != nil {
 		zap.L().Error("failed to create token storage interface", zap.Error(err))
 		return

@@ -2,6 +2,8 @@ module github.com/redhat-appstudio/service-provider-integration-oauth
 
 go 1.17
 
+replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/sparkoo/service-provider-integration-operator v0.6.3-0.20220717150712-949c4a78dd85
+
 require (
 	github.com/alexedwards/scs/v2 v2.5.0
 	github.com/alexflint/go-arg v1.4.3
@@ -118,6 +120,7 @@ require (
 	github.com/hashicorp/raft-snapshot v1.0.4 // indirect
 	github.com/hashicorp/vault-plugin-secrets-kv v0.12.1 // indirect
 	github.com/hashicorp/vault/api v1.7.2 // indirect
+	github.com/hashicorp/vault/api/auth/approle v0.1.0 // indirect
 	github.com/hashicorp/vault/api/auth/kubernetes v0.1.0 // indirect
 	github.com/hashicorp/vault/sdk v0.5.2 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect

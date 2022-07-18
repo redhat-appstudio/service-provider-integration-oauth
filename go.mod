@@ -2,7 +2,7 @@ module github.com/redhat-appstudio/service-provider-integration-oauth
 
 go 1.17
 
-replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/sparkoo/service-provider-integration-operator v0.6.3-0.20220717150712-949c4a78dd85
+replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/sparkoo/service-provider-integration-operator v0.6.3-0.20220718124138-1bb90a34ab47
 
 require (
 	github.com/alexedwards/scs/v2 v2.5.0

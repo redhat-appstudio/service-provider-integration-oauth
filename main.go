@@ -113,17 +113,15 @@ func main() {
 		return
 	}
 
-	var vaultTokenStorageConfig *tokenstorage.VaultStorageConfig
-	if args.VaultAuthMethod == tokenstorage.VaultAuthMethodKubernetes {
-		vaultTokenStorageConfig = tokenstorage.KubernetesAuthConfig(args.VaultHost, args.VaultKubernetesRole, args.VaultKubernetesSATokenFilePath, args.VaultInsecureTLS)
-	} else if args.VaultAuthMethod == tokenstorage.VaultAuthMethodApprole {
-		vaultTokenStorageConfig = tokenstorage.ApproleAuthConfig(args.VaultHost, args.VaultApproleRoleIdFilePath, args.VaultApproleSecretIdFilePath, args.VaultInsecureTLS)
-	} else {
-		zap.L().Error(fmt.Sprintf("failed to initialize the token storage, unknown vault auth type '%s'", args.VaultAuthMethod))
-		return
-	}
-
-	strg, err := tokenstorage.NewVaultStorage(vaultTokenStorageConfig)
+	strg, err := tokenstorage.NewVaultStorage(&tokenstorage.VaultStorageConfig{
+		Host:                        args.VaultHost,
+		AuthType:                    args.VaultAuthMethod,
+		Insecure:                    args.VaultInsecureTLS,
+		Role:                        args.VaultKubernetesRole,
+		ServiceAccountTokenFilePath: args.VaultKubernetesSATokenFilePath,
+		RoleIdFilePath:              args.VaultApproleRoleIdFilePath,
+		SecretIdFilePath:            args.VaultApproleSecretIdFilePath,
+	})
 	if err != nil {
 		zap.L().Error("failed to create token storage interface", zap.Error(err))
 		return

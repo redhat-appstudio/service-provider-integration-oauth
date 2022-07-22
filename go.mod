@@ -8,7 +8,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/hashicorp/vault v1.11.0
+	github.com/hashicorp/vault v1.11.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/redhat-appstudio/service-provider-integration-operator v0.6.10-0.20220720121320-455fa360ceed
@@ -120,7 +120,7 @@ require (
 	github.com/hashicorp/vault/api v1.7.2 // indirect
 	github.com/hashicorp/vault/api/auth/approle v0.1.0 // indirect
 	github.com/hashicorp/vault/api/auth/kubernetes v0.1.0 // indirect
-	github.com/hashicorp/vault/sdk v0.5.2 // indirect
+	github.com/hashicorp/vault/sdk v0.5.3-0.20220621155127-c9ca5e0e239b // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hashicorp/yamux v0.0.0-20211028200310-0bc27b27de87 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
@@ -189,7 +189,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect

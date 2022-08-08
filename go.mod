@@ -8,7 +8,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/hashicorp/vault v1.11.1
+	github.com/hashicorp/vault v1.11.2
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/redhat-appstudio/service-provider-integration-operator v0.7.2
@@ -120,7 +120,7 @@ require (
 	github.com/hashicorp/vault/api v1.7.2 // indirect
 	github.com/hashicorp/vault/api/auth/approle v0.1.0 // indirect
 	github.com/hashicorp/vault/api/auth/kubernetes v0.1.0 // indirect
-	github.com/hashicorp/vault/sdk v0.5.3-0.20220621155127-c9ca5e0e239b // indirect
+	github.com/hashicorp/vault/sdk v0.5.3-0.20220721224827-e96a652fbfb0 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hashicorp/yamux v0.0.0-20211028200310-0bc27b27de87 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect

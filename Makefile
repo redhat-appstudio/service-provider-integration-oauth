@@ -41,7 +41,7 @@ check_fmt:
 	  $(error "goimports must be installed for this rule" && exit 1)
   endif
   ifeq ($(shell command -v addlicense 2> /dev/null),)
-	  $(error "error addlicense must be installed for this rule: go get -u github.com/google/addlicense")
+	  $(error "error addlicense must be installed for this rule: go install github.com/google/addlicense@latest")
   endif
 	  if [[ $$(find . -not -path '*/\.*' -name '*.go' -exec goimports -l {} \;) != "" ]]; then \
 	    echo "Files not formatted; run 'make fmt'"; exit 1 ;\
@@ -83,7 +83,7 @@ fmt_license:
 	  @echo 'addlicense -v -f license_header.txt **/*.go'
 	  addlicense -v -f license_header.txt $$(find . -not -path '*/\.*' -name '*.go')
   else
-	  $(error addlicense must be installed for this rule: go get -u github.com/google/addlicense)
+	  $(error addlicense must be installed for this rule: go install github.com/google/addlicense@latest)
   endif
 
 ENVTEST = $(shell pwd)/bin/setup-envtest

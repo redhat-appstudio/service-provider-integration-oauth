@@ -58,8 +58,8 @@ jobs:
           fi
       - name: Check format
         run: |
-          go get -u github.com/google/addlicense
-          go get -u golang.org/x/tools/cmd/goimports
+          go install github.com/google/addlicense@latest
+          go install golang.org/x/tools/cmd/goimports@latest
           git reset HEAD --hard
           go fmt -x ./...
           if [[ ! -z $(git status -s) ]]

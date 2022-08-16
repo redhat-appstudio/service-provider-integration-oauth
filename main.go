@@ -178,10 +178,11 @@ func main() {
 	server := &http.Server{
 		Addr: args.ServiceAddr,
 		// Good practice to set timeouts to avoid Slowloris attacks.
-		WriteTimeout: time.Second * 15,
-		ReadTimeout:  time.Second * 15,
-		IdleTimeout:  time.Second * 60,
-		Handler:      sessionManager.LoadAndSave(controllers.MiddlewareHandler(strings.Split(args.AllowedOrigins, ","), router)),
+		WriteTimeout:      time.Second * 15,
+		ReadTimeout:       time.Second * 15,
+		ReadHeaderTimeout: time.Second * 15,
+		IdleTimeout:       time.Second * 60,
+		Handler:           sessionManager.LoadAndSave(controllers.MiddlewareHandler(strings.Split(args.AllowedOrigins, ","), router)),
 	}
 
 	// Run our server in a goroutine so that it doesn't block.

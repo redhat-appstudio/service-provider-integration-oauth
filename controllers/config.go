@@ -37,7 +37,7 @@ type OAuthServiceConfiguration struct {
 }
 
 func LoadOAuthServiceConfiguration(args OAuthServiceCliArgs) (OAuthServiceConfiguration, error) {
-	baseCfg, err := config.LoadFrom(args.ConfigFile)
+	baseCfg, err := config.LoadFrom(&args.CommonCliArgs)
 	if err != nil {
 		return OAuthServiceConfiguration{}, fmt.Errorf("failed to load the configuration from file %s: %w", args.ConfigFile, err)
 	}

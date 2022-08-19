@@ -877,8 +877,8 @@ github.com/mattn/go-runewidth v0.0.3/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzp
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 h1:I0XW9+e1XWDxdcEniV4rQAIOPUGDq67JSCiRCgGCZLI=
 github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
-github.com/metlos/service-provider-integration-operator v0.0.0-20220819101240-5422f8f924f5 h1:lcRxzShl+Q+BjMIvWjuwwOrlfONlMwnyS10dVHpJrwE=
-github.com/metlos/service-provider-integration-operator v0.0.0-20220819101240-5422f8f924f5/go.mod h1:1djEKM68DiXJp4vlGY9AK9r1V6xHjbidkVzXJTGtZhY=
+github.com/metlos/service-provider-integration-operator v0.0.0-20220819145901-f7514cbbc200 h1:MFwDHBHRRSEVnrKzQlEj3B48CU2cDZ/fJ5Ew7uBmqpo=
+github.com/metlos/service-provider-integration-operator v0.0.0-20220819145901-f7514cbbc200/go.mod h1:1djEKM68DiXJp4vlGY9AK9r1V6xHjbidkVzXJTGtZhY=
 github.com/michaelklishin/rabbit-hole/v2 v2.12.0 h1:946p6jOYFcVJdtBBX8MwXvuBkpPjwm1Nm2Qg8oX+uFk=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/dns v1.1.41 h1:WMszZWJG0XmzbK9FEmzH2TVcqYzFesusSIB41b8KHxY=

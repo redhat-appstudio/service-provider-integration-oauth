@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package controllers
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ func TestK8sConfigParse(t *testing.T) {
 	cmd := ""
 	env := []string{"API_SERVER=http://localhost:9001", "API_SERVER_CA_PATH=/etc/ca.crt"}
 	//then
-	args := cliArgs{}
+	args := OAuthServiceCliArgs{}
 	_, err := parseWithEnv(cmd, env, &args)
 	//when
 	if err != nil {
@@ -46,7 +46,7 @@ func TestCorsConfigParse(t *testing.T) {
 	cmd := ""
 	env := []string{"ALLOWEDORIGINS=prod.acme.com"}
 	//then
-	args := cliArgs{}
+	args := OAuthServiceCliArgs{}
 	_, err := parseWithEnv(cmd, env, &args)
 	//when
 	if err != nil {

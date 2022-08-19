@@ -22,7 +22,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.11.2
 )
 
-replace sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de
+replace (
+	github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20220819101240-5422f8f924f5
+	sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de
+)
 
 require (
 	cloud.google.com/go v0.81.0 // indirect

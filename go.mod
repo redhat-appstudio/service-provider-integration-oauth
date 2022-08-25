@@ -23,7 +23,7 @@ require (
 )
 
 replace (
-	github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20220824105857-8d7cde396df1
+	github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20220825153108-c3a554b4f45a
 	sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de
 )
 

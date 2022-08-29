@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/vault v1.11.2
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.0
-	github.com/redhat-appstudio/service-provider-integration-operator v0.7.3-0.20220816155432-c2e561959b9b
+	github.com/redhat-appstudio/service-provider-integration-operator v0.7.3-0.20220829123331-89f1d64fb367
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
@@ -22,10 +22,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.11.2
 )
 
-replace (
-	github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20220825153108-c3a554b4f45a
-	sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de
-)
+replace sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de
 
 require (
 	cloud.google.com/go v0.81.0 // indirect

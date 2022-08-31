@@ -13,7 +13,7 @@ require (
 	github.com/onsi/gomega v1.20.0
 	github.com/redhat-appstudio/service-provider-integration-operator v0.7.4-0.20220831090023-12c085728913
 	github.com/stretchr/testify v1.8.0
-	go.uber.org/zap v1.21.0
+	go.uber.org/zap v1.23.0
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	k8s.io/api v0.24.3
 	k8s.io/apimachinery v0.24.3

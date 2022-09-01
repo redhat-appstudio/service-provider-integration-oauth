@@ -31,18 +31,17 @@ import (
 	"github.com/alexedwards/scs/v2/memstore"
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
+	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
-	"go.uber.org/zap"
 	authz "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	certutil "k8s.io/client-go/util/cert"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/redhat-appstudio/service-provider-integration-oauth/controllers"
 )
 
 func main() {
@@ -51,17 +50,19 @@ func main() {
 
 	logs.InitLoggers(args.ZapDevel, args.ZapEncoder, args.ZapLogLevel, args.ZapStackTraceLevel, args.ZapTimeEncoding)
 
-	zap.L().Info("Starting OAuth service with environment", zap.Strings("env", os.Environ()), zap.Any("configuration", &args))
+	setupLog := ctrl.Log.WithName("setup")
+
+	setupLog.Info("Starting OAuth service with environment", "env", os.Environ(), "configuration", &args)
 
 	cfg, err := controllers.LoadOAuthServiceConfiguration(args)
 	if err != nil {
-		zap.L().Error("failed to initialize the configuration", zap.Error(err))
+		setupLog.Error(err, "failed to initialize the configuration")
 		os.Exit(1)
 	}
 
 	kubeConfig, err := kubernetesConfig(&args)
 	if err != nil {
-		zap.L().Error("failed to create kubernetes configuration", zap.Error(err))
+		setupLog.Error(err, "failed to create kubernetes configuration")
 		os.Exit(1)
 	}
 
@@ -86,7 +87,7 @@ func main() {
 	})
 
 	if err != nil {
-		zap.L().Error("failed to create kubernetes client", zap.Error(err))
+		setupLog.Error(err, "failed to create kubernetes client")
 		return
 	}
 
@@ -100,7 +101,7 @@ func main() {
 		SecretIdFilePath:            args.VaultApproleSecretIdFilePath,
 	})
 	if err != nil {
-		zap.L().Error("failed to create token storage interface", zap.Error(err))
+		setupLog.Error(err, "failed to create token storage interface")
 		return
 	}
 
@@ -131,16 +132,16 @@ func main() {
 
 	redirectTpl, err := template.ParseFiles("static/redirect_notice.html")
 	if err != nil {
-		zap.L().Error("failed to parse the redirect notice HTML template", zap.Error(err))
+		setupLog.Error(err, "failed to parse the redirect notice HTML template")
 		return
 	}
 
 	for _, sp := range cfg.ServiceProviders {
-		zap.L().Debug("initializing service provider controller", zap.String("type", string(sp.ServiceProviderType)), zap.String("url", sp.ServiceProviderBaseUrl))
+		setupLog.V(1).Info("initializing service provider controller", "type", sp.ServiceProviderType, "url", sp.ServiceProviderBaseUrl)
 
 		controller, err := controllers.FromConfiguration(cfg, sp, authenticator, stateStorage, cl, strg, redirectTpl)
 		if err != nil {
-			zap.L().Error("failed to initialize controller: %s", zap.Error(err))
+			setupLog.Error(err, "failed to initialize controller")
 		}
 
 		prefix := strings.ToLower(string(sp.ServiceProviderType))
@@ -150,8 +151,7 @@ func main() {
 			controller.Callback(r.Context(), w, r)
 		})).Methods("GET")
 	}
-
-	zap.L().Info("Starting the server", zap.String("Addr", args.ServiceAddr))
+	setupLog.Info("Starting the server", "Addr", args.ServiceAddr)
 	server := &http.Server{
 		Addr: args.ServiceAddr,
 		// Good practice to set timeouts to avoid Slowloris attacks.
@@ -165,29 +165,30 @@ func main() {
 	// Run our server in a goroutine so that it doesn't block.
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
-			zap.L().Error("failed to start the HTTP server", zap.Error(err))
+			setupLog.Error(err, "failed to start the HTTP server")
 		}
 	}()
-	zap.L().Info("Server is up and running")
+
 	// Setting up signal capturing
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
 	// Waiting for SIGINT (kill -2)
 	<-stop
-	zap.L().Info("Server got interrupt signal, going to gracefully shutdown the server", zap.Any("signal", stop))
+
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline.
 	if err := server.Shutdown(ctx); err != nil {
-		zap.L().Fatal("OAuth server shutdown failed", zap.Error(err))
+		setupLog.Error(err, "OAuth server shutdown failed")
+		os.Exit(1)
 	}
 	// Optionally, you could run srv.Shutdown in a goroutine and block on
 	// <-ctx.Done() if your application should wait for other services
 	// to finalize based on context cancellation.
-	zap.L().Info("OAuth server exited properly")
+	setupLog.Info("OAuth server exited properly")
 	os.Exit(0)
 }
 

@@ -16,9 +16,12 @@ package controllers
 import (
 	"errors"
 	"net/http"
+	"time"
+
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/alexedwards/scs/v2"
-	"go.uber.org/zap"
 )
 
 type Authenticator struct {
@@ -50,13 +53,14 @@ func (a Authenticator) tokenReview(token string, req *http.Request) (bool, error
 	return true, nil
 }
 func (a *Authenticator) GetToken(r *http.Request) (string, error) {
-	zap.L().Debug("/GetToken")
+	lg := log.FromContext(r.Context())
+	defer logs.TimeTrack(lg, time.Now(), "/GetToken")
 
 	token := r.URL.Query().Get("k8s_token")
 	if token == "" {
 		token = a.SessionManager.GetString(r.Context(), "k8s_token")
 	} else {
-		zap.L().Debug("persisting token that was provided by `k8_token` query parameter to the session")
+		lg.V(logs.DebugLevel).Info("persisting token that was provided by `k8_token` query parameter to the session")
 		a.SessionManager.Put(r.Context(), "k8s_token", token)
 	}
 
@@ -67,7 +71,8 @@ func (a *Authenticator) GetToken(r *http.Request) (string, error) {
 }
 
 func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
-	zap.L().Debug("/login")
+	lg := log.FromContext(r.Context())
+	defer logs.TimeTrack(lg, time.Now(), "/Login")
 
 	token := r.FormValue("k8s_token")
 
@@ -76,27 +81,26 @@ func (a Authenticator) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if token == "" {
-		LogDebugAndWriteResponse(w, http.StatusUnauthorized, "failed extract authorization info either from headers or form parameters")
+		LogDebugAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "failed extract authorization info either from headers or form parameters")
 		return
 	}
 	hasAccess, err := a.tokenReview(token, r)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusUnauthorized, "failed to determine if the authenticated user has access", err)
-		zap.L().Warn("The token is incorrect or the SPI OAuth service is not configured properly " +
-			"and the API_SERVER environment variable points it to the incorrect Kubernetes API server. " +
-			"If SPI is running with Devsandbox Proxy or KCP, make sure this env var points to the Kubernetes API proxy," +
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "failed to determine if the authenticated user has access", err)
+		lg.Error(err, "The token is incorrect or the SPI OAuth service is not configured properly "+
+			"and the API_SERVER environment variable points it to the incorrect Kubernetes API server. "+
+			"If SPI is running with Devsandbox Proxy or KCP, make sure this env var points to the Kubernetes API proxy,"+
 			" otherwise unset this variable. See more https://github.com/redhat-appstudio/infra-deployments/pull/264")
 		return
 	}
 
 	if !hasAccess {
-		LogDebugAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
+		LogDebugAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
 		return
 	}
 
 	a.SessionManager.Put(r.Context(), "k8s_token", token)
 	w.WriteHeader(http.StatusOK)
-	zap.L().Debug("/login ok")
 }
 
 func NewAuthenticator(sessionManager *scs.SessionManager, cl AuthenticatingClient) *Authenticator {

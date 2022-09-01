@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"html/template"
 	"net"
 	"net/http"
@@ -168,14 +169,14 @@ func main() {
 			setupLog.Error(err, "failed to start the HTTP server")
 		}
 	}()
-
+	setupLog.Info("Server is up and running")
 	// Setting up signal capturing
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
 	// Waiting for SIGINT (kill -2)
 	<-stop
-
+	setupLog.Info("Server got interrupt signal, going to gracefully shutdown the server", zap.Any("signal", stop))
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

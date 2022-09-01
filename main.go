@@ -52,7 +52,6 @@ func main() {
 	logs.InitLoggers(args.ZapDevel, args.ZapEncoder, args.ZapLogLevel, args.ZapStackTraceLevel, args.ZapTimeEncoding)
 
 	setupLog := ctrl.Log.WithName("setup")
-
 	setupLog.Info("Starting OAuth service with environment", "env", os.Environ(), "configuration", &args)
 
 	cfg, err := controllers.LoadOAuthServiceConfiguration(args)

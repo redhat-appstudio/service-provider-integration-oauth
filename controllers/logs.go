@@ -16,8 +16,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/go-logr/logr"
 	"net/http"
+
+	"github.com/go-logr/logr"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
 	"sigs.k8s.io/controller-runtime/pkg/log"

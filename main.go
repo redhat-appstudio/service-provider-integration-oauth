@@ -16,7 +16,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"html/template"
 	"net"
 	"net/http"
@@ -25,6 +24,8 @@ import (
 	"os/signal"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"

@@ -117,6 +117,7 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		LogDebugAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
 		return
 	}
+	AuditLogWithTokenInfo(r.Context(), "OAuth authentication flow started", state.TokenNamespace, state.TokenName, "provider", string(state.ServiceProviderType), "scopes", state.Scopes)
 	newStateString, err := c.StateStorage.VeilRealState(r)
 	if err != nil {
 		LogErrorAndWriteResponse(r.Context(), w, http.StatusBadRequest, err.Error(), err)
@@ -163,7 +164,7 @@ func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r
 		LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to store token data to cluster", err)
 		return
 	}
-
+	AuditLogWithTokenInfo(ctx, "OAuth authentication completed successfully", exchange.TokenNamespace, exchange.TokenName, "provider", string(exchange.ServiceProviderType), "scopes", exchange.Scopes)
 	redirectLocation := r.FormValue("redirect_after_login")
 	if redirectLocation == "" {
 		redirectLocation = strings.TrimSuffix(c.BaseUrl, "/") + "/" + "callback_success"

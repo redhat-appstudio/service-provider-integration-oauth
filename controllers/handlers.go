@@ -58,6 +58,7 @@ func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 		Title:   errorMsg,
 		Message: errorDescription,
 	}
+	AuditLog(r.Context()).Info("OAuth authentication flow failed.", "message", errorMsg, "description", errorDescription)
 	tmpl, _ := template.ParseFiles("../static/callback_error.html")
 
 	err := tmpl.Execute(w, data)

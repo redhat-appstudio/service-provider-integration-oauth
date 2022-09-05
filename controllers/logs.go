@@ -16,6 +16,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/go-logr/logr"
 	"net/http"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
@@ -42,4 +43,13 @@ func LogDebugAndWriteResponse(ctx context.Context, w http.ResponseWriter, status
 	if err != nil {
 		log.Error(err, "error recording response error message")
 	}
+}
+
+func AuditLogWithTokenInfo(ctx context.Context, msg string, namespace string, token string, keysAndValues ...interface{}) {
+	keysAndValues = append(keysAndValues, "namespace", namespace, "token", token)
+	AuditLog(ctx).Info(msg, keysAndValues...)
+}
+
+func AuditLog(ctx context.Context) logr.Logger {
+	return log.FromContext(ctx, "audit", "true")
 }

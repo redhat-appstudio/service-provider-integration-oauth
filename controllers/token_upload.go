@@ -16,7 +16,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-
 	api "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,6 +46,7 @@ type SpiTokenUploader struct {
 }
 
 func (u *SpiTokenUploader) Upload(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+	AuditLogWithTokenInfo(ctx, "manual token upload initiated", tokenObjectNamespace, tokenObjectName)
 	token := &api.SPIAccessToken{}
 	if err := u.K8sClient.Get(ctx, client.ObjectKey{Name: tokenObjectName, Namespace: tokenObjectNamespace}, token); err != nil {
 		return fmt.Errorf("failed to get SPIAccessToken object %s/%s: %w", tokenObjectNamespace, tokenObjectName, err)
@@ -55,5 +55,6 @@ func (u *SpiTokenUploader) Upload(ctx context.Context, tokenObjectName string, t
 	if err := u.Storage.Store(ctx, token, data); err != nil {
 		return fmt.Errorf("failed to store the token data into storage: %w", err)
 	}
+	AuditLogWithTokenInfo(ctx, "manual token upload done", tokenObjectNamespace, tokenObjectName)
 	return nil
 }

@@ -46,11 +46,13 @@ func LogDebugAndWriteResponse(ctx context.Context, w http.ResponseWriter, status
 	}
 }
 
+// AuditLogWithTokenInfo logs message related to particular SPIAccessToken into audit logger
 func AuditLogWithTokenInfo(ctx context.Context, msg string, namespace string, token string, keysAndValues ...interface{}) {
 	keysAndValues = append(keysAndValues, "namespace", namespace, "token", token)
 	AuditLog(ctx).Info(msg, keysAndValues...)
 }
 
+// AuditLog returns logger prepared with audit markers
 func AuditLog(ctx context.Context) logr.Logger {
 	return log.FromContext(ctx, "audit", "true")
 }

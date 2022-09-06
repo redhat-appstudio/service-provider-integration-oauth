@@ -15,6 +15,10 @@ package controllers
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+
+	"github.com/kcp-dev/logicalcluster/v2"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	authz "k8s.io/api/authorization/v1"
@@ -52,10 +56,37 @@ func CreateClient(cfg *rest.Config, options client.Options) (AuthenticatingClien
 
 	AugmentConfiguration(cfg)
 
+	cfg.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+		return kcpWorkspaceRoundTripper{next: rt}
+	})
+
 	cl, err := client.New(cfg, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a kubernetes client: %w", err)
 	}
 
 	return cl, nil
+}
+
+// kcpWorkspaceRoundTripper is http.RoundTripper that in kcp environment, makes the request workspace aware, based on workspace name in context.
+// Noop for non-kcp environment.
+//
+// client usage then looks like this:
+// ...
+// ctx = logicalcluster.WithCluster(ctx, logicalcluster.New("kcp-workspace"))
+// err := client.Get(ctx, client.ObjectKey{Name: "object-name", Namespace: "object-namespace"}, object)
+// ...
+type kcpWorkspaceRoundTripper struct {
+	next http.RoundTripper
+}
+
+func (w kcpWorkspaceRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	if clusterName, hasClusterName := logicalcluster.ClusterFromContext(request.Context()); hasClusterName {
+		kcpUrl, err := url.JoinPath("/clusters", clusterName.String(), request.URL.Path)
+		if err != nil {
+			return nil, err
+		}
+		request.URL.Path = kcpUrl
+	}
+	return w.next.RoundTrip(request)
 }

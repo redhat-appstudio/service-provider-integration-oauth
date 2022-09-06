@@ -85,6 +85,8 @@ func main() {
 		Mapper: mapper,
 	})
 
+	zap.L().Info(fmt.Sprintf("craeted client from config: %+v", kubeConfig))
+
 	if err != nil {
 		zap.L().Error("failed to create kubernetes client", zap.Error(err))
 		return
@@ -128,6 +130,7 @@ func main() {
 	router.HandleFunc("/login", authenticator.Login).Methods("POST")
 	router.NewRoute().Path("/{type}/callback").Queries("error", "", "error_description", "").HandlerFunc(controllers.CallbackErrorHandler)
 	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(controllers.HandleUpload(&tokenUploader)).Methods("POST")
+	router.NewRoute().Path("/token/{kcpWorkspace}/{namespace}/{name}").HandlerFunc(controllers.HandleUpload(&tokenUploader)).Methods("POST")
 
 	redirectTpl, err := template.ParseFiles("static/redirect_notice.html")
 	if err != nil {

@@ -16,7 +16,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"net/url"
+	"path"
 
 	"github.com/kcp-dev/logicalcluster/v2"
 
@@ -82,11 +82,7 @@ type kcpWorkspaceRoundTripper struct {
 
 func (w kcpWorkspaceRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
 	if clusterName, hasClusterName := logicalcluster.ClusterFromContext(request.Context()); hasClusterName {
-		kcpUrl, err := url.JoinPath("/clusters", clusterName.String(), request.URL.Path)
-		if err != nil {
-			return nil, err
-		}
-		request.URL.Path = kcpUrl
+		request.URL.Path = path.Join("/clusters", clusterName.String(), request.URL.Path)
 	}
 	return w.next.RoundTrip(request)
 }

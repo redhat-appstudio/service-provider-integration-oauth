@@ -20,14 +20,17 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
 
 	v1 "k8s.io/api/authorization/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/config"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/oauthstate"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/spi-shared/tokenstorage"
-	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -79,42 +82,44 @@ func (c *commonController) redirectUrl() string {
 }
 
 func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
-	zap.L().Debug("/authenticate")
+	log := log.FromContext(r.Context())
+
+	defer logs.TimeTrack(log, time.Now(), "/authenticate")
 
 	stateString := r.FormValue("state")
 	codec, err := oauthstate.NewCodec(c.JwtSigningSecret)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to instantiate OAuth stateString codec", err)
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to instantiate OAuth stateString codec", err)
 		return
 	}
 
 	state, err := codec.ParseAnonymous(stateString)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusBadRequest, "failed to decode the OAuth state", err)
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusBadRequest, "failed to decode the OAuth state", err)
 		return
 	}
 	token, err := c.Authenticator.GetToken(r)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusUnauthorized, "No active session was found. Please use `/login` method to authorize your request and try again. Or provide the token as a `k8s_token` query parameter.", err)
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "No active session was found. Please use `/login` method to authorize your request and try again. Or provide the token as a `k8s_token` query parameter.", err)
 		return
 	}
 	hasAccess, err := c.checkIdentityHasAccess(token, r, state)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to determine if the authenticated user has access", err)
-		zap.L().Warn("The token is incorrect or the SPI OAuth service is not configured properly " +
-			"and the API_SERVER environment variable points it to the incorrect Kubernetes API server. " +
-			"If SPI is running with Devsandbox Proxy or KCP, make sure this env var points to the Kubernetes API proxy," +
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to determine if the authenticated user has access", err)
+		log.Error(err, "The token is incorrect or the SPI OAuth service is not configured properly "+
+			"and the API_SERVER environment variable points it to the incorrect Kubernetes API server. "+
+			"If SPI is running with Devsandbox Proxy or KCP, make sure this env var points to the Kubernetes API proxy,"+
 			" otherwise unset this variable. See more https://github.com/redhat-appstudio/infra-deployments/pull/264")
 		return
 	}
 
 	if !hasAccess {
-		LogDebugAndWriteResponse(w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
+		LogDebugAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
 		return
 	}
 	newStateString, err := c.StateStorage.VeilRealState(r)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusBadRequest, err.Error(), err)
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusBadRequest, err.Error(), err)
 		return
 	}
 	keyedState := exchangeState{
@@ -130,31 +135,32 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	}{
 		Url: oauthCfg.AuthCodeURL(newStateString),
 	}
-	zap.L().Info("Redirecting ", zap.String("url", templateData.Url))
+	log.V(logs.DebugLevel).Info("Redirecting ", "url", templateData.Url)
 	err = c.RedirectTemplate.Execute(w, templateData)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to return redirect notice HTML page", err)
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to return redirect notice HTML page", err)
 		return
 	}
-	zap.L().Debug("/authenticate ok")
 }
 
 func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	zap.L().Debug("/callback")
+	lg := log.FromContext(r.Context())
+	defer logs.TimeTrack(lg, time.Now(), "/callback")
+
 	exchange, err := c.finishOAuthExchange(ctx, r, c.Endpoint)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusBadRequest, "error in Service Provider token exchange", err)
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusBadRequest, "error in Service Provider token exchange", err)
 		return
 	}
 
 	if exchange.result == oauthFinishK8sAuthRequired {
-		LogErrorAndWriteResponse(w, http.StatusUnauthorized, "could not authenticate to Kubernetes", err)
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "could not authenticate to Kubernetes", err)
 		return
 	}
 
 	err = c.syncTokenData(ctx, &exchange)
 	if err != nil {
-		LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to store token data to cluster", err)
+		LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to store token data to cluster", err)
 		return
 	}
 
@@ -163,8 +169,6 @@ func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r
 		redirectLocation = strings.TrimSuffix(c.BaseUrl, "/") + "/" + "callback_success"
 	}
 	http.Redirect(w, r, redirectLocation, http.StatusFound)
-
-	zap.L().Debug("/callback ok")
 }
 
 // finishOAuthExchange implements the bulk of the Callback function. It returns the token, if obtained, the decoded
@@ -256,6 +260,6 @@ func (c *commonController) checkIdentityHasAccess(token string, req *http.Reques
 		return false, fmt.Errorf("failed to create SelfSubjectAccessReview: %w", err)
 	}
 
-	zap.L().Debug("self subject review result", zap.Stringer("review", &review))
+	log.FromContext(req.Context()).V(logs.DebugLevel).Info("self subject review result", "review", &review)
 	return review.Status.Allowed, nil
 }

@@ -20,8 +20,10 @@ import (
 	"math/big"
 	"net/http"
 
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
 	"github.com/alexedwards/scs/v2"
-	"go.uber.org/zap"
 )
 
 type StateStorage struct {
@@ -38,9 +40,10 @@ const (
 )
 
 func (s StateStorage) VeilRealState(req *http.Request) (string, error) {
+	log := log.FromContext(req.Context())
 	state := req.URL.Query().Get("state")
 	if state == "" {
-		zap.L().Error("Request has no state parameter")
+		log.Error(noStateError, "Request has no state parameter")
 		return "", noStateError
 	}
 	newState, err := randStringBytes(32)
@@ -48,19 +51,20 @@ func (s StateStorage) VeilRealState(req *http.Request) (string, error) {
 
 		return "", err
 	}
-	zap.L().Debug("State veiled", zap.String("state", state), zap.String("veil", newState))
+	log.V(logs.DebugLevel).Info("State veiled", "state", state, "veil", newState)
 	s.sessionManager.Put(req.Context(), newState, state)
 	return newState, nil
 }
 
 func (s StateStorage) UnveilState(ctx context.Context, req *http.Request) (string, error) {
+	log := log.FromContext(req.Context())
 	state := req.URL.Query().Get("state")
 	if state == "" {
-		zap.L().Error("Request has no state parameter")
+		log.Error(noStateError, "Request has no state parameter")
 		return "", noStateError
 	}
 	unveiledState := s.sessionManager.GetString(ctx, state)
-	zap.L().Debug("State unveiled", zap.String("veil", state), zap.String("unveiledState", unveiledState))
+	log.V(logs.DebugLevel).Info("State unveiled", "veil", state, "unveiledState", unveiledState)
 	return unveiledState, nil
 }
 

@@ -14,28 +14,32 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
-	"go.uber.org/zap"
+	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func LogErrorAndWriteResponse(w http.ResponseWriter, status int, msg string, err error) {
-	zap.L().Error(msg, zap.Error(err))
+func LogErrorAndWriteResponse(ctx context.Context, w http.ResponseWriter, status int, msg string, err error) {
+	log := log.FromContext(ctx)
+	log.Error(err, msg)
 	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, err = fmt.Fprintf(w, "%s: %s", msg, err.Error())
 	if err != nil {
-		zap.L().Error("error recording response error message", zap.Error(err))
+		log.Error(err, "error recording response error message")
 	}
 }
 
-func LogDebugAndWriteResponse(w http.ResponseWriter, status int, msg string, fields ...zap.Field) {
-	zap.L().Debug(msg, fields...)
+func LogDebugAndWriteResponse(ctx context.Context, w http.ResponseWriter, status int, msg string, keysAndValues ...interface{}) {
+	log := log.FromContext(ctx)
+	log.V(logs.DebugLevel).Info(msg, keysAndValues...)
 	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, err := fmt.Fprint(w, msg)
 	if err != nil {
-		zap.L().Error("error recording response error message", zap.Error(err))
+		log.Error(err, "error recording response error message")
 	}
 }

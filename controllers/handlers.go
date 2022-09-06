@@ -18,6 +18,8 @@ import (
 	"html/template"
 	"net/http"
 
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
 	"github.com/kcp-dev/logicalcluster/v2"
 
 	"github.com/go-jose/go-jose/v3/json"
@@ -64,7 +66,7 @@ func CallbackErrorHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		w.WriteHeader(http.StatusOK)
 	} else {
-		zap.L().Error("failed to process template: %s", zap.Error(err))
+		log.FromContext(r.Context()).Error(err, "failed to process template")
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(fmt.Sprintf("Error response returned to OAuth callback: %s. Message: %s ", errorMsg, errorDescription)))
 	}
@@ -77,7 +79,7 @@ func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Reques
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, err := WithAuthFromRequestIntoContext(r, r.Context())
 		if err != nil {
-			LogErrorAndWriteResponse(w, http.StatusUnauthorized, "failed extract authorization information from headers", err)
+			LogErrorAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "failed extract authorization information from headers", err)
 			return
 		}
 
@@ -89,23 +91,23 @@ func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Reques
 		}
 
 		if len(tokenObjectName) < 1 || len(tokenObjectNamespace) < 1 {
-			LogDebugAndWriteResponse(w, http.StatusInternalServerError, "Incorrect service deployment. Token name and namespace can't be omitted or empty.")
+			LogDebugAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "Incorrect service deployment. Token name and namespace can't be omitted or empty.")
 			return
 		}
 
 		data := &api.Token{}
 		if err := json.NewDecoder(r.Body).Decode(data); err != nil {
-			LogErrorAndWriteResponse(w, http.StatusBadRequest, "failed to decode request body as token JSON", err)
+			LogErrorAndWriteResponse(r.Context(), w, http.StatusBadRequest, "failed to decode request body as token JSON", err)
 			return
 		}
 
 		if data.AccessToken == "" {
-			LogDebugAndWriteResponse(w, http.StatusBadRequest, "access token can't be omitted or empty")
+			LogDebugAndWriteResponse(r.Context(), w, http.StatusBadRequest, "access token can't be omitted or empty")
 			return
 		}
 
 		if err := uploader.Upload(ctx, tokenObjectName, tokenObjectNamespace, data); err != nil {
-			LogErrorAndWriteResponse(w, http.StatusInternalServerError, "failed to upload the token", err)
+			LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to upload the token", err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

@@ -87,8 +87,6 @@ func main() {
 		Mapper: mapper,
 	})
 
-	zap.L().Info(fmt.Sprintf("craeted client from config: %+v", kubeConfig))
-
 	if err != nil {
 		setupLog.Error(err, "failed to create kubernetes client")
 		return

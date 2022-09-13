@@ -84,5 +84,9 @@ func (w kcpWorkspaceRoundTripper) RoundTrip(request *http.Request) (*http.Respon
 	if clusterName, hasClusterName := logicalcluster.ClusterFromContext(request.Context()); hasClusterName {
 		request.URL.Path = path.Join(clusterName.Path(), request.URL.Path)
 	}
-	return w.next.RoundTrip(request)
+	response, err := w.next.RoundTrip(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run next http roundtrip: %w", err)
+	}
+	return response, nil
 }

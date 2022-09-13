@@ -12,7 +12,7 @@ require (
 	github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.2
-	github.com/redhat-appstudio/service-provider-integration-operator v0.7.4-0.20220909124214-f10d60a6081e
+	github.com/redhat-appstudio/service-provider-integration-operator v0.7.4-0.20220913090241-7af7534de0f6
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8

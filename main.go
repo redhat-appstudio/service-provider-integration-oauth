@@ -103,6 +103,10 @@ func main() {
 		zap.L().Error("failed to create token storage interface", zap.Error(err))
 		return
 	}
+	if err := strg.Initialize(context.Background()); err != nil {
+		zap.L().Error("failed to login to token storage", zap.Error(err))
+		return
+	}
 
 	tokenUploader := controllers.SpiTokenUploader{
 		K8sClient: cl,

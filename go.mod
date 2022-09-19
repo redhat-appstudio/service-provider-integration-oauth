@@ -26,6 +26,8 @@ require (
 
 replace sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de
 
+replace github.com/redhat-appstudio/service-provider-integration-operator => github.com/metlos/service-provider-integration-operator v0.0.0-20220919150645-da9dfdc296b7
+
 require (
 	cloud.google.com/go v0.81.0 // indirect
 	github.com/Azure/azure-sdk-for-go v61.4.0+incompatible // indirect

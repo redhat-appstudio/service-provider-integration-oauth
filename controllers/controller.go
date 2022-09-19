@@ -72,7 +72,6 @@ func FromConfiguration(fullConfig OAuthServiceConfiguration, spConfig config.Ser
 
 	return &commonController{
 		Config:           spConfig,
-		JwtSigningSecret: fullConfig.SharedSecret,
 		K8sClient:        cl,
 		TokenStorage:     ts,
 		Endpoint:         endpoint,

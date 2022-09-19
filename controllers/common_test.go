@@ -44,16 +44,10 @@ import (
 var _ = Describe("Controller", func() {
 
 	prepareAnonymousState := func() string {
-		codec, err := oauthstate.NewCodec([]byte("secret"))
-		Expect(err).NotTo(HaveOccurred())
-
-		ret, err := codec.Encode(&oauthstate.AnonymousOAuthState{
-			TokenName:           "mytoken",
-			TokenNamespace:      IT.Namespace,
-			IssuedAt:            time.Now().Unix(),
-			Scopes:              []string{"a", "b"},
-			ServiceProviderType: "My_Special_SP",
-			ServiceProviderUrl:  "https://special.sp",
+		ret, err := oauthstate.Encode(&oauthstate.OAuthInfo{
+			TokenName:      "mytoken",
+			TokenNamespace: IT.Namespace,
+			Scopes:         []string{"a", "b"},
 		})
 		Expect(err).NotTo(HaveOccurred())
 		return ret
@@ -93,9 +87,8 @@ var _ = Describe("Controller", func() {
 				ClientSecret:        "clientSecret",
 				ServiceProviderType: config.ServiceProviderTypeGitHub,
 			},
-			JwtSigningSecret: []byte("secret"),
-			K8sClient:        IT.Client,
-			TokenStorage:     IT.TokenStorage,
+			K8sClient:    IT.Client,
+			TokenStorage: IT.TokenStorage,
 			Endpoint: oauth2.Endpoint{
 				AuthURL:   "https://special.sp/login",
 				TokenURL:  "https://special.sp/toekn",

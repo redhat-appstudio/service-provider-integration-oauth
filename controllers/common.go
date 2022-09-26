@@ -44,7 +44,6 @@ var (
 // commonController is the implementation of the Controller interface that assumes typical OAuth flow.
 type commonController struct {
 	Config           config.ServiceProviderConfiguration
-	JwtSigningSecret []byte
 	K8sClient        AuthenticatingClient
 	TokenStorage     tokenstorage.TokenStorage
 	Endpoint         oauth2.Endpoint
@@ -57,7 +56,7 @@ type commonController struct {
 // exchangeState is the state that we're sending out to the SP after checking the anonymous oauth state produced by
 // the operator as the initial OAuth URL. Notice that the state doesn't contain any sensitive information.
 type exchangeState struct {
-	oauthstate.AnonymousOAuthState
+	oauthstate.OAuthInfo
 }
 
 // exchangeResult this the result of the OAuth exchange with all the data necessary to store the token into the storage
@@ -89,13 +88,8 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 	defer logs.TimeTrack(log, time.Now(), "/authenticate")
 
 	stateString := r.FormValue("state")
-	codec, err := oauthstate.NewCodec(c.JwtSigningSecret)
-	if err != nil {
-		LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to instantiate OAuth stateString codec", err)
-		return
-	}
 
-	state, err := codec.ParseAnonymous(stateString)
+	state, err := oauthstate.ParseOAuthInfo(stateString)
 	if err != nil {
 		LogErrorAndWriteResponse(r.Context(), w, http.StatusBadRequest, "failed to decode the OAuth state", err)
 		return
@@ -119,14 +113,14 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 		LogDebugAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "authenticating the request in Kubernetes unsuccessful")
 		return
 	}
-	AuditLogWithTokenInfo(r.Context(), "OAuth authentication flow started", state.TokenNamespace, state.TokenName, "provider", string(state.ServiceProviderType), "scopes", state.Scopes)
+	AuditLogWithTokenInfo(r.Context(), "OAuth authentication flow started", state.TokenNamespace, state.TokenName, "scopes", state.Scopes, "providerType", string(state.ServiceProviderType), "providerUrl", state.ServiceProviderUrl, "kcpWorkspace", state.TokenKcpWorkspace)
 	newStateString, err := c.StateStorage.VeilRealState(r)
 	if err != nil {
 		LogErrorAndWriteResponse(r.Context(), w, http.StatusBadRequest, err.Error(), err)
 		return
 	}
 	keyedState := exchangeState{
-		AnonymousOAuthState: state,
+		OAuthInfo: state,
 	}
 
 	oauthCfg := c.newOAuth2Config()
@@ -147,27 +141,27 @@ func (c commonController) Authenticate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c commonController) Callback(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	lg := log.FromContext(r.Context())
+	lg := log.FromContext(ctx)
 	defer logs.TimeTrack(lg, time.Now(), "/callback")
 
 	exchange, err := c.finishOAuthExchange(ctx, r, c.Endpoint)
 	if err != nil {
-		LogErrorAndWriteResponse(r.Context(), w, http.StatusBadRequest, "error in Service Provider token exchange", err)
+		LogErrorAndWriteResponse(ctx, w, http.StatusBadRequest, "error in Service Provider token exchange", err)
 		return
 	}
 	ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(exchange.TokenKcpWorkspace))
 
 	if exchange.result == oauthFinishK8sAuthRequired {
-		LogErrorAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "could not authenticate to Kubernetes", err)
+		LogErrorAndWriteResponse(ctx, w, http.StatusUnauthorized, "could not authenticate to Kubernetes", err)
 		return
 	}
 
 	err = c.syncTokenData(ctx, &exchange)
 	if err != nil {
-		LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to store token data to cluster", err)
+		LogErrorAndWriteResponse(ctx, w, http.StatusInternalServerError, "failed to store token data to cluster", err)
 		return
 	}
-	AuditLogWithTokenInfo(ctx, "OAuth authentication completed successfully", exchange.TokenNamespace, exchange.TokenName, "provider", string(exchange.ServiceProviderType), "scopes", exchange.Scopes)
+	AuditLogWithTokenInfo(ctx, "OAuth authentication completed successfully", exchange.TokenNamespace, exchange.TokenName, "scopes", exchange.Scopes, "providerType", string(exchange.ServiceProviderType), "providerUrl", exchange.ServiceProviderUrl, "kcpWorkspace", exchange.TokenKcpWorkspace)
 	redirectLocation := r.FormValue("redirect_after_login")
 	if redirectLocation == "" {
 		redirectLocation = strings.TrimSuffix(c.BaseUrl, "/") + "/" + "callback_success"
@@ -185,13 +179,9 @@ func (c commonController) finishOAuthExchange(ctx context.Context, r *http.Reque
 	if err != nil {
 		return exchangeResult{result: oauthFinishError}, fmt.Errorf("failed to unveil token state: %w", err)
 	}
-	codec, err := oauthstate.NewCodec(c.JwtSigningSecret)
-	if err != nil {
-		return exchangeResult{result: oauthFinishError}, fmt.Errorf("failed to create JWT codec: %w", err)
-	}
 
 	state := &exchangeState{}
-	err = codec.ParseInto(stateString, state)
+	err = oauthstate.ParseInto(stateString, state)
 	if err != nil {
 		return exchangeResult{result: oauthFinishError}, fmt.Errorf("failed to parse JWT state string: %w", err)
 	}
@@ -245,7 +235,7 @@ func (c commonController) syncTokenData(ctx context.Context, exchange *exchangeR
 	return nil
 }
 
-func (c *commonController) checkIdentityHasAccess(token string, req *http.Request, state oauthstate.AnonymousOAuthState) (bool, error) {
+func (c *commonController) checkIdentityHasAccess(token string, req *http.Request, state oauthstate.OAuthInfo) (bool, error) {
 	review := v1.SelfSubjectAccessReview{
 		Spec: v1.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &v1.ResourceAttributes{

@@ -57,7 +57,7 @@ func (s StateStorage) VeilRealState(req *http.Request) (string, error) {
 }
 
 func (s StateStorage) UnveilState(ctx context.Context, req *http.Request) (string, error) {
-	log := log.FromContext(req.Context())
+	log := log.FromContext(ctx)
 	state := req.URL.Query().Get("state")
 	if state == "" {
 		log.Error(noStateError, "Request has no state parameter")

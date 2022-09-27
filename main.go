@@ -25,8 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/alexedwards/scs/v2"
 	"github.com/redhat-appstudio/service-provider-integration-operator/pkg/logs"
 
@@ -177,7 +175,7 @@ func main() {
 
 	// Waiting for SIGINT (kill -2)
 	<-stop
-	setupLog.Info("Server got interrupt signal, going to gracefully shutdown the server", zap.Any("signal", stop))
+	setupLog.Info("Server got interrupt signal, going to gracefully shutdown the server", "signal", stop)
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

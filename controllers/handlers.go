@@ -18,7 +18,8 @@ import (
 	"html/template"
 	"net/http"
 
-	kubeErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -110,11 +111,16 @@ func HandleUpload(uploader TokenUploader) func(http.ResponseWriter, *http.Reques
 		}
 
 		if err := uploader.Upload(ctx, tokenObjectName, tokenObjectNamespace, data); err != nil {
-			if kubeErrors.IsNotFound(err) { // supports wrapped errors
+			switch errors.ReasonForError(err) {
+			case v1.StatusReasonNotFound:
 				LogErrorAndWriteResponse(r.Context(), w, http.StatusNotFound, "specified SPIAccessToken does not exist", err)
-				return
+			case v1.StatusReasonForbidden:
+				LogErrorAndWriteResponse(r.Context(), w, http.StatusForbidden, "authorization token does not have permission to update SPIAccessToken", err)
+			case v1.StatusReasonUnauthorized:
+				LogErrorAndWriteResponse(r.Context(), w, http.StatusUnauthorized, "invalid authorization token, cannot update SPIAccessToken", err)
+			default:
+				LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to upload the token", err)
 			}
-			LogErrorAndWriteResponse(r.Context(), w, http.StatusInternalServerError, "failed to upload the token", err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

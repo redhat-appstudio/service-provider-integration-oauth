@@ -191,38 +191,58 @@ func TestUploader_FailWithEmptyToken(t *testing.T) {
 	}
 }
 
-func TestUploader_FailWithAbsentSpiAccessToken(t *testing.T) {
-	uploader := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+func TestUploader_FailWithProperResponse(t *testing.T) {
+	uploaderNotFound := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
 		assert.Equal(t, "john", tokenObjectName)
 		assert.Equal(t, "namespace", tokenObjectNamespace)
-
 		return fmt.Errorf("mocking a missing SPIAccessToken: %w", errors.NewNotFound(schema.GroupResource{
 			Group:    "testGroup",
 			Resource: "testSPIAccessToken",
 		}, tokenObjectName))
 	})
 
-	req, err := http.NewRequest("POST", "/token/namespace/john", bytes.NewBuffer([]byte(`{"access_token": "2022"}`)))
-	if err != nil {
-		t.Fatal(err)
+	uploaderForbidden := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+		return fmt.Errorf("mocking a token with forbidden access: %w", errors.NewForbidden(schema.GroupResource{
+			Group:    "testGroup",
+			Resource: "testSPIAccessToken",
+		}, tokenObjectName, fmt.Errorf("unauthorized")))
+	})
+
+	uploaderUnauthorized := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+		return fmt.Errorf("mocking an invalid token: %w", errors.NewUnauthorized("not a valid token"))
+	})
+
+	uploaderInternal := UploadFunc(func(ctx context.Context, tokenObjectName string, tokenObjectNamespace string, data *api.Token) error {
+		return fmt.Errorf("mocking internal unrelated error")
+	})
+
+	testResponse := func(uploader UploadFunc, statusCode int, errorMsg string) {
+		req, err := http.NewRequest("POST", "/token/namespace/john", bytes.NewBuffer([]byte(`{"access_token": "2022"}`)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Authorization", "Bearer macky")
+
+		w := httptest.NewRecorder()
+		var router = mux.NewRouter()
+		router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(HandleUpload(uploader)).Methods("POST")
+
+		router.ServeHTTP(w, req)
+		res := w.Result()
+		defer res.Body.Close()
+
+		assert.Equal(t, statusCode, res.StatusCode)
+
+		data, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Contains(t, string(data), errorMsg)
 	}
-	req.Header.Set("Authorization", "Bearer macky")
-
-	w := httptest.NewRecorder()
-	var router = mux.NewRouter()
-	router.NewRoute().Path("/token/{namespace}/{name}").HandlerFunc(HandleUpload(uploader)).Methods("POST")
-
-	router.ServeHTTP(w, req)
-	res := w.Result()
-	defer res.Body.Close()
-
-	assert.Equal(t, http.StatusNotFound, res.StatusCode)
-
-	data, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Contains(t, string(data), "mocking a missing SPIAccessToken")
+	testResponse(uploaderNotFound, http.StatusNotFound, "mocking a missing SPIAccessToken")
+	testResponse(uploaderForbidden, http.StatusForbidden, "mocking a token with forbidden access")
+	testResponse(uploaderUnauthorized, http.StatusUnauthorized, "mocking an invalid token")
+	testResponse(uploaderInternal, http.StatusInternalServerError, "mocking internal unrelated error")
 }
 
 func TestUploader_FailWithoutAuthorization(t *testing.T) {

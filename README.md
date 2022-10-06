@@ -1,3 +1,5 @@
+## !!! this repository is now part of https://github.com/redhat-appstudio/service-provider-integration-operator. Please do not commit here anymore!
+
 # spi-oauth
 Service provider integration OAuth2 microservice.
 
